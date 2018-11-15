@@ -1,7 +1,13 @@
 classdef HeatExchanger < handle
     properties
-        totalVolume
-        cellVolume
+        OneTubeTotalVolume      % Total VLE volume of one tube
+        OneTubeCellVolume       % Volume of a cell
+        InnerTubeDiameter
+        OneTubeLength           % Length for the tube for one flow
+        nParallelFlows          % Number of parallel flows
+        f1                      % Friction factor
+        OneTubeTotalResistance  % Total resistance of one tube
+        OneTubeCellResistance   % Resistance of one piece of one tube
 %         stiffnessMatrix
 %         invStiffnessMatrix
         nCell
@@ -18,6 +24,7 @@ classdef HeatExchanger < handle
         Dp
         Dh
         Dd
+        DL
         DpState
         DhState
         DdState
@@ -27,7 +34,8 @@ classdef HeatExchanger < handle
     end
     methods
         function discretize(hx)
-            hx.cellVolume = hx.totalVolume/hx.nCell;
+            hx.OneTubeCellVolume = hx.OneTubeTotalVolume/hx.nCell;
+            hx.OneTubeCellResistance = hx.OneTubeTotalResistance/hx.nCell;
 %             *** If FEM was needed: ***
 % 
 %             hx.stiffnessMatrix = zeros(nCell);
@@ -38,50 +46,48 @@ classdef HeatExchanger < handle
 %             hx.invStiffnessMatrix = inv(hx.stiffnessMatrix);
         end
         function massflow(hx,DmInlet,DmOutlet)
-            averageResistance = abs(hx.p(1)-hx.p(end)) /...
-                ((DmInlet+DmOutlet)/2)/(hx.nCell-1);
-            hx.Dm  = [DmInlet;...
-                (hx.p(1:end-1)-hx.p(2:end))/averageResistance;...
-                DmOutlet];
-%             figure(2)
-%             plot(1:hx.nCell,hx.Dm)
-%             title(num2str(averageResistance))
-%             pause(0.5)
+            deltap = hx.p(1:end-1)-hx.p(2:end);
+            d = 0.5*(hx.d(1:end-1)+hx.d(2:end));
+            inducedDm = sign(deltap).*sqrt(abs(deltap.*d))...
+                /hx.OneTubeCellResistance;
+            hx.Dm  = [DmInlet/hx.nParallelFlows; inducedDm;...
+                DmOutlet/hx.nParallelFlows];
+%             hx.DL = [0; deltap.*inducedDm./d]*0;
         end
         function massAccummulation(hx)
-            hx.DdState = -diff(hx.Dm)/hx.cellVolume;
-            hx.Dd = (hx.dState-hx.d)/hx.dStateTimeConstant;
+            hx.Dd = -diff(hx.Dm)/hx.OneTubeCellVolume;
+%             hx.Dd = (hx.dState-hx.d)/hx.dStateTimeConstant;
         end
         function potentialAccummulation(hx,hInlet,DQ)
             Dpsi = (-diff(hx.Dm .*...
                 [hInlet; 0.5*(hx.h(1:end-1)+hx.h(2:end)); hx.h(end)])...
-                + DQ)/hx.cellVolume;
+                + DQ)/hx.OneTubeCellVolume;
             DpDh_vector = zeros(2,hx.nCell);
             for it = 1:hx.nCell
                 dddp = CoolProp.PropsSI('d(D)/d(P)|H','H',hx.h(it),'P',hx.p(it),'CO2');
                 dddh = CoolProp.PropsSI('d(D)/d(H)|P','H',hx.h(it),'P',hx.p(it),'CO2');
                 DpDh_vector(:,it) = [-1 hx.d(it); dddp dddh]\[Dpsi(it); hx.Dd(it)];
             end
-            hx.DpState = DpDh_vector(1,:)';
-            hx.DhState = DpDh_vector(2,:)';
-            hx.Dp = (hx.pState-hx.p)/hx.pStateTimeConstant;
-            hx.Dh = (hx.hState-hx.h)/hx.hStateTimeConstant;
+            hx.Dp = DpDh_vector(1,:)';
+            hx.Dh = DpDh_vector(2,:)';
+%             hx.Dp = (hx.pState-hx.p)/hx.pStateTimeConstant;
+%             hx.Dh = (hx.hState-hx.h)/hx.hStateTimeConstant;
         end
         function timestep(hx,t,inputs)
             % Function help: simulates the heat exchanger from time t1 to
             %   time t2. Input is a structure that has the following
             %   fields: DmInlet, DmOutlet and the heatflow
             
-            x = [hx.p; hx.h; hx.d; hx.pState; hx.hState; hx.dState];
-            [t, x] = ode15s(@hx.process,[t(1) t(2)],x,hx.ODEoptions,inputs);
+            x = [hx.p; hx.h; hx.d]; %; hx.pState; hx.hState; hx.dState];
+            [t, x] = ode45(@hx.process,[t(1) t(2)],x,hx.ODEoptions,inputs);
             hx.record.t = [hx.record.t; t];
             hx.record.x = [hx.record.x; x];
-            hx.p = x(1,1:hx.nCell)';
-            hx.h = x(1,hx.nCell+1:2*hx.nCell)';
-            hx.d = x(1,2*hx.nCell+1:3*hx.nCell)';
-            hx.pState = x(1,3*hx.nCell+1:4*hx.nCell)';
-            hx.hState = x(1,4*hx.nCell+1:5*hx.nCell)';
-            hx.dState = x(1,5*hx.nCell+1:6*hx.nCell)';
+            hx.p = x(end,1:hx.nCell)';
+            hx.h = x(end,hx.nCell+1:2*hx.nCell)';
+            hx.d = x(end,2*hx.nCell+1:3*hx.nCell)';
+%             hx.pState = x(1,3*hx.nCell+1:4*hx.nCell)';
+%             hx.hState = x(1,4*hx.nCell+1:5*hx.nCell)';
+%             hx.dState = x(1,5*hx.nCell+1:6*hx.nCell)';
         end
         function Dx = process(hx,t,x,inputs)
             % Time
@@ -90,9 +96,9 @@ classdef HeatExchanger < handle
             hx.p = x(1:hx.nCell,1);
             hx.h = x(hx.nCell+1:2*hx.nCell,1);
             hx.d = x(2*hx.nCell+1:3*hx.nCell,1);
-            hx.pState = x(3*hx.nCell+1:4*hx.nCell,1);
-            hx.hState = x(4*hx.nCell+1:5*hx.nCell,1);
-            hx.dState = x(5*hx.nCell+1:6*hx.nCell,1);
+%             hx.pState = x(3*hx.nCell+1:4*hx.nCell,1);
+%             hx.hState = x(4*hx.nCell+1:5*hx.nCell,1);
+%             hx.dState = x(5*hx.nCell+1:6*hx.nCell,1);
             % hx.ph2d;
             % Inputs
             DmInlet = inputs.DmInlet;
@@ -103,14 +109,22 @@ classdef HeatExchanger < handle
             massflow(hx,DmInlet,DmOutlet);
             massAccummulation(hx);
             potentialAccummulation(hx,hInlet,DQ);
-            Dx = [hx.Dp; hx.Dh; hx.Dd; hx.DpState; hx.DhState; hx.DdState];
+%             Dx = [hx.DpState; hx.DhState; hx.DdState; hx.DpState; hx.DhState; hx.DdState];
+            Dx = [hx.Dp; hx.Dh; hx.Dd];
         end
-        function initialize(hx,nCell,p,h,Volume,TimeConstants,ODEoptions)
+        function initialize(hx,nCell,p,h,Parameters,TimeConstants,ODEoptions)
             % Function help: provide two-element vectors for pressure and 
             %   enthalpy inlets and outlets, and provide volume.
                  
             hx.nCell = nCell;
-            hx.totalVolume = Volume;
+            hx.InnerTubeDiameter = Parameters.InnerTubeDiameter;
+            hx.OneTubeLength = Parameters.OneTubelength;
+            hx.nParallelFlows = Parameters.nParallelFlows;
+            hx.f1 = Parameters.f1;
+            hx.OneTubeTotalVolume =...
+                hx.InnerTubeDiameter^2*pi/4*hx.OneTubeLength;
+            hx.OneTubeTotalResistance = sqrt(16*hx.f1*hx.OneTubeLength/...
+                (pi^2*hx.InnerTubeDiameter^5));
             hx.discretize();
             hx.p = linspace(p(1),p(2),nCell)';
             hx.pState = hx.p;
