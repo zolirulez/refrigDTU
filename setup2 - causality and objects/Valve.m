@@ -10,8 +10,8 @@ classdef Valve
       function hOutlet = enthalpy(valve,hInlet)
           hOutlet = hInlet;
       end
-      function [mdot, hOutlet] = process(valve,capacityRatio,dInlet,pInlet,pOutlet,hInlet)
-         mdot = flow(valve,capacityRatio,dInlet,pInlet,pOutlet);
+      function [Dm, hOutlet] = process(valve,capacityRatio,dInlet,pInlet,pOutlet,hInlet)
+         Dm = flow(valve,capacityRatio,dInlet,pInlet,pOutlet);
          hOutlet = enthalpy(valve,hInlet);
       end
    end

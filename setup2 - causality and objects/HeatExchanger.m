@@ -35,7 +35,7 @@ classdef HeatExchanger < handle
     methods
         function discretize(hx)
             hx.OneTubeCellVolume = hx.OneTubeTotalVolume/hx.nCell;
-            hx.OneTubeCellResistance = hx.OneTubeTotalResistance/hx.nCell;
+            hx.OneTubeCellResistance = sqrt(hx.OneTubeTotalResistance^2/hx.nCell);
 %             *** If FEM was needed: ***
 % 
 %             hx.stiffnessMatrix = zeros(nCell);
@@ -47,12 +47,11 @@ classdef HeatExchanger < handle
         end
         function massflow(hx,DmInlet,DmOutlet)
             deltap = hx.p(1:end-1)-hx.p(2:end);
-            d = 0.5*(hx.d(1:end-1)+hx.d(2:end));
-            inducedDm = sign(deltap).*sqrt(abs(deltap.*d))...
+            inducedDm = sign(deltap).*...
+                sqrt(abs(deltap.*(0.5*(hx.d(1:end-1)+hx.d(2:end)))))...
                 /hx.OneTubeCellResistance;
             hx.Dm  = [DmInlet/hx.nParallelFlows; inducedDm;...
                 DmOutlet/hx.nParallelFlows];
-%             hx.DL = [0; deltap.*inducedDm./d]*0;
         end
         function massAccummulation(hx)
             hx.Dd = -diff(hx.Dm)/hx.OneTubeCellVolume;
@@ -60,17 +59,17 @@ classdef HeatExchanger < handle
         end
         function potentialAccummulation(hx,hInlet,DQ)
             Dpsi = (-diff(hx.Dm .*...
-                [hInlet; 0.5*(hx.h(1:end-1)+hx.h(2:end)); hx.h(end)])...
+                [hInlet; 0.5*(hx.h(1:end-1)+hx.h(2:end)); hx.h(end)])... 298e3 put this back TODO
                 + DQ)/hx.OneTubeCellVolume;
             DpDh_vector = zeros(2,hx.nCell);
             for it = 1:hx.nCell
-                dddp = CoolProp.PropsSI('d(D)/d(P)|H','H',hx.h(it),'P',hx.p(it),'CO2');
-                dddh = CoolProp.PropsSI('d(D)/d(H)|P','H',hx.h(it),'P',hx.p(it),'CO2');
-                DpDh_vector(:,it) = [-1 hx.d(it); dddp dddh]\[Dpsi(it); hx.Dd(it)];
+                Dd_Dp = CoolProp.PropsSI('d(D)/d(P)|H','H',hx.h(it),'P',hx.p(it),'CO2');
+                Dd_Dh = CoolProp.PropsSI('d(D)/d(H)|P','H',hx.h(it),'P',hx.p(it),'CO2');
+                DpDh_vector(:,it) = [-1 hx.d(it); Dd_Dp Dd_Dh]\[Dpsi(it); hx.Dd(it)];
             end
-            hx.Dp = DpDh_vector(1,:)';
+            hx.DpState = DpDh_vector(1,:)';
             hx.Dh = DpDh_vector(2,:)';
-%             hx.Dp = (hx.pState-hx.p)/hx.pStateTimeConstant;
+            hx.Dp = (hx.pState-hx.p)/hx.pStateTimeConstant;
 %             hx.Dh = (hx.hState-hx.h)/hx.hStateTimeConstant;
         end
         function timestep(hx,t,inputs)
@@ -78,14 +77,14 @@ classdef HeatExchanger < handle
             %   time t2. Input is a structure that has the following
             %   fields: DmInlet, DmOutlet and the heatflow
             
-            x = [hx.p; hx.h; hx.d]; %; hx.pState; hx.hState; hx.dState];
-            [t, x] = ode45(@hx.process,[t(1) t(2)],x,hx.ODEoptions,inputs);
+            x = [hx.p; hx.h; hx.d; hx.pState]; %; hx.pState; hx.hState; hx.dState];
+            [t, x] = ode15s(@hx.process,[t(1) t(2)],x,hx.ODEoptions,inputs);
             hx.record.t = [hx.record.t; t];
             hx.record.x = [hx.record.x; x];
             hx.p = x(end,1:hx.nCell)';
             hx.h = x(end,hx.nCell+1:2*hx.nCell)';
             hx.d = x(end,2*hx.nCell+1:3*hx.nCell)';
-%             hx.pState = x(1,3*hx.nCell+1:4*hx.nCell)';
+            hx.pState = x(end,3*hx.nCell+1:4*hx.nCell)';
 %             hx.hState = x(1,4*hx.nCell+1:5*hx.nCell)';
 %             hx.dState = x(1,5*hx.nCell+1:6*hx.nCell)';
         end
@@ -96,7 +95,7 @@ classdef HeatExchanger < handle
             hx.p = x(1:hx.nCell,1);
             hx.h = x(hx.nCell+1:2*hx.nCell,1);
             hx.d = x(2*hx.nCell+1:3*hx.nCell,1);
-%             hx.pState = x(3*hx.nCell+1:4*hx.nCell,1);
+            hx.pState = x(3*hx.nCell+1:4*hx.nCell,1);
 %             hx.hState = x(4*hx.nCell+1:5*hx.nCell,1);
 %             hx.dState = x(5*hx.nCell+1:6*hx.nCell,1);
             % hx.ph2d;
@@ -109,8 +108,8 @@ classdef HeatExchanger < handle
             massflow(hx,DmInlet,DmOutlet);
             massAccummulation(hx);
             potentialAccummulation(hx,hInlet,DQ);
-%             Dx = [hx.DpState; hx.DhState; hx.DdState; hx.DpState; hx.DhState; hx.DdState];
-            Dx = [hx.Dp; hx.Dh; hx.Dd];
+%             Dx = [hx.Dp; hx.Dh; hx.Dd; hx.DpState; hx.DhState; hx.DdState];
+            Dx = [hx.DpState; hx.Dh; hx.Dd; hx.DpState];
         end
         function initialize(hx,nCell,p,h,Parameters,TimeConstants,ODEoptions)
             % Function help: provide two-element vectors for pressure and 
