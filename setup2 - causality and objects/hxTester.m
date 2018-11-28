@@ -19,7 +19,7 @@ inputs.DmInlet = Dm;
 inputs.DmOutlet = Dm;
 tic
 timestep = 1;
-for it = 1:1000
+for it = 1:500
     it
     inputs.DQ = DQ + 0*ones(nCell,1)*sin(2*pi*it*timestep)*1000;
     hx.timestep([(it-1)*timestep it*timestep],inputs);
