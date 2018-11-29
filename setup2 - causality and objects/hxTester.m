@@ -8,9 +8,9 @@ Parameters
 hx = HeatExchanger;
 p = [84.8e5 84.8e5-1.57e5];
 h = [525e3 298e3];
-tau = [0.001 0.01 0.01];
+tau = [0.1 0.01 0.01];
 ODEoptions = [];
-nCell = 10;
+nCell = 2;
 hx.initialize(nCell,p,h,Parameters,tau,ODEoptions)
 Dm = 0.3186;
 inputs.hInlet = 525e3;
@@ -19,9 +19,10 @@ inputs.DmInlet = Dm;
 inputs.DmOutlet = Dm;
 tic
 timestep = 1;
-for it = 1:500
+itmax = 500;
+for it = 1:itmax
     it
-    inputs.DQ = DQ + 0*ones(nCell,1)*sin(2*pi*it*timestep)*1000;
+    inputs.DQ = DQ + 0*ones(nCell,1)*sin(2*pi*it/itmax*10)*100;
     hx.timestep([(it-1)*timestep it*timestep],inputs);
 end
 toc

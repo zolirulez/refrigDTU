@@ -12,21 +12,26 @@ classdef HeatExchanger < handle
         % Discretization parameter
         nCell
         % Variables
-        Dm                      % Mass flow rate
-        p                       % Pressure
-        h                       % Enthalpy
-        d                       % Density
-        pState                  % Pressure state for smoothing
-        pStateTimeConstant      % First order time constant for pState
-        Dp                      % Pressure derivative
-        Dh                      % Enthalpy derivative
-        Dd                      % Density derivative
-        DpState                 % Pressure state derivative
-        record                  % Record of results
-        ODEoptions              % Options of ODE solver
-        t                       % Last time instant
+        Dm                  
+        p
+        h
+        d
+        pState
+        pStateTimeConstant
+        Dp
+        Dh
+        Dd
+        DL
+        DpState
+        record
+        ODEoptions
+        t
     end
     methods
+        function discretize(hx)
+            hx.OneTubeCellVolume = hx.OneTubeTotalVolume/hx.nCell;
+            hx.OneTubeCellResistance = sqrt(hx.OneTubeTotalResistance^2/hx.nCell);
+        end
         function massflow(hx,DmInlet,DmOutlet)
             deltap = hx.p(1:end-1)-hx.p(2:end);
             inducedDm = sign(deltap).*...
@@ -103,15 +108,15 @@ classdef HeatExchanger < handle
             hx.pState = hx.p;
             hx.pStateTimeConstant = TimeConstants(1);
             hx.h = linspace(h(1),h(2),nCell)';
+            hx.hState = hx.h;
+            hx.hStateTimeConstant = TimeConstants(2);
             hx.ph2d;
+            hx.dState = hx.d;
+            hx.dStateTimeConstant = TimeConstants(3);
             hx.ODEoptions = ODEoptions;
             record.t = [];
             record.x = [];
             hx.record = record;
-        end
-        function discretize(hx)
-            hx.OneTubeCellVolume = hx.OneTubeTotalVolume/hx.nCell;
-            hx.OneTubeCellResistance = sqrt(hx.OneTubeTotalResistance^2/hx.nCell);
         end
         function ph2d(hx)
             hx.d = zeros(hx.nCell,1);
