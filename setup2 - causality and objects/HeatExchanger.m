@@ -3,6 +3,7 @@ classdef HeatExchanger < handle
         % Parameters
         OneTubeTotalVolume      % Total VLE volume of one tube
         OneTubeCellVolume       % Volume of a cell
+        CrossArea               % Area of fluid crossing in tube
         InnerTubeDiameter
         OneTubeLength           % Length for the tube for one flow
         nParallelFlows          % Number of parallel flows
@@ -13,6 +14,7 @@ classdef HeatExchanger < handle
         nCell
         % Variables
         Dm                      % Mass flow rate
+        v                       % Velocity
         p                       % Pressure
         h                       % Enthalpy
         d                       % Density
@@ -34,13 +36,17 @@ classdef HeatExchanger < handle
                 /hx.OneTubeCellResistance;
             hx.Dm  = [DmInlet/hx.nParallelFlows; inducedDm;...
                 DmOutlet/hx.nParallelFlows];
+            hx.v = hx.Dm./[hx.d(1); hx.d(1:end)]/hx.CrossArea;
 %            hx.Dm  = DmInlet/hx.nParallelFlows*ones(hx.nCell+1,1);
         end
         function massAccummulation(hx)
             hx.Dd = -diff(hx.Dm)/hx.OneTubeCellVolume;
         end
         function potentialAccummulation(hx,hInlet,DQ)
-            Dpsi = (-diff(hx.Dm .*[hInlet; hx.h(1:end)]) + DQ)/hx.OneTubeCellVolume;
+            Dpsi = (-diff(hx.Dm .*([hInlet; hx.h(1:end)] + hx.v.^2/2)) ...
+                + DQ)/hx.OneTubeCellVolume;
+%             Dpsi = (-diff(hx.Dm .*[hInlet; hx.h(1:end)]) ...
+%                 + DQ)/hx.OneTubeCellVolume;
             DpDh_vector = zeros(2,hx.nCell);
             for it = 1:hx.nCell
                 Dd_Dp = CoolProp.PropsSI('d(D)/d(P)|H','H',hx.h(it),'P',hx.p(it),'CO2');
@@ -94,8 +100,8 @@ classdef HeatExchanger < handle
             hx.OneTubeLength = Parameters.OneTubelength;
             hx.nParallelFlows = Parameters.nParallelFlows;
             hx.f1 = Parameters.f1;
-            hx.OneTubeTotalVolume =...
-                hx.InnerTubeDiameter^2*pi/4*hx.OneTubeLength;
+            hx.CrossArea = hx.InnerTubeDiameter^2*pi/4;
+            hx.OneTubeTotalVolume = hx.CrossArea*hx.OneTubeLength;
             hx.OneTubeTotalResistance = sqrt(16*hx.f1*hx.OneTubeLength/...
                 (pi^2*hx.InnerTubeDiameter^5));
             hx.discretize();

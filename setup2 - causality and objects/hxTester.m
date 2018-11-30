@@ -22,7 +22,7 @@ timestep = 1;
 itmax = 500;
 for it = 1:itmax
     it
-    inputs.DQ = DQ + 0*ones(nCell,1)*sin(2*pi*it/itmax*10)*100;
+    inputs.DQ = DQ + ones(nCell,1)*sin(2*pi*it/itmax*10)*100;
     hx.timestep([(it-1)*timestep it*timestep],inputs);
 end
 toc
