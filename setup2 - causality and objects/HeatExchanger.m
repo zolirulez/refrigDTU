@@ -25,6 +25,9 @@ classdef HeatExchanger < handle
         record                  % Record of results
         ODEoptions              % Options of ODE solver
         t                       % Last time instant
+        % Partial derivatives
+        Dd_Dh
+        Dd_Dp
     end
     methods
         function massflow(hx,DmInlet,DmOutlet)
@@ -43,9 +46,17 @@ classdef HeatExchanger < handle
             Dpsi = (-diff(hx.Dm .*[hInlet; hx.h(1:end)]) + DQ)/hx.OneTubeCellVolume;
             DpDh_vector = zeros(2,hx.nCell);
             for it = 1:hx.nCell
-                Dd_Dp = CoolProp.PropsSI('d(D)/d(P)|H','H',hx.h(it),'P',hx.p(it),'CO2');
-                Dd_Dh = CoolProp.PropsSI('d(D)/d(H)|P','H',hx.h(it),'P',hx.p(it),'CO2');
-                DpDh_vector(:,it) = [-1 hx.d(it); Dd_Dp Dd_Dh]\[Dpsi(it); hx.Dd(it)];
+                try
+                    Dd_Dp = CoolProp.PropsSI('d(D)/d(P)|H','H',hx.h(it),'P',hx.p(it),'CO2');
+                    Dd_Dh = CoolProp.PropsSI('d(D)/d(H)|P','H',hx.h(it),'P',hx.p(it),'CO2');
+                    hx.Dd_Dp = Dd_Dp;
+                    hx.Dd_Dh = Dd_Dh;
+                catch
+                    global bugnumber
+                    bugnumber = bugnumber+1;
+                end
+                DpDh_vector(:,it) = [-1 hx.d(it); hx.Dd_Dp hx.Dd_Dh]\...
+                    [Dpsi(it); hx.Dd(it)];
             end
             hx.DpState = DpDh_vector(1,:)';
             hx.Dh = DpDh_vector(2,:)';

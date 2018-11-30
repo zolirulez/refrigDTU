@@ -1,7 +1,7 @@
 % Sketch for the whole simulation
-timestep = 1;
+timestep = 0.1;
 tic
-for it = 1:100
+for it = 1:1000
     % Pi controllers provide frequency and capacityRatio
     freq = PIcomp(ev.p(end));
     cR = PIvalve(gx.p(end));

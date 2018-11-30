@@ -1,4 +1,4 @@
-classdef Valve
+classdef Valve < handle
    properties
       Kv
    end
@@ -10,9 +10,16 @@ classdef Valve
       function hOutlet = enthalpy(valve,hInlet)
           hOutlet = hInlet;
       end
-      function [Dm, hOutlet] = process(valve,capacityRatio,dInlet,pInlet,pOutlet,hInlet)
-         Dm = flow(valve,capacityRatio,dInlet,pInlet,pOutlet);
-         hOutlet = enthalpy(valve,hInlet);
+      function [Dm, hOutlet] = process(valve,capacityRatio,Inputs)
+          dInlet = Inputs.dInlet;
+          pInlet = Inputs.pInlet;
+          pOutlet = Inputs.pOutlet;
+          hInlet = Inputs.hInlet;
+          Dm = flow(valve,capacityRatio,dInlet,pInlet,pOutlet);
+          hOutlet = enthalpy(valve,hInlet);
+      end
+      function initialize(valve,Kv)
+          valve.Kv = Kv;      
       end
    end
 end
