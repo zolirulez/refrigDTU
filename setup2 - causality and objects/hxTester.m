@@ -1,6 +1,9 @@
 clearvars
-global bugnumber
+global bugnumber partials ratios derivatives
+partials = [];
+ratios = [];
 bugnumber = 0;
+derivatives = [];
 givenVolume = 0.0192;
 Parameters.InnerTubeDiameter = 0.0192;
 Parameters.nParallelFlows = 20;
@@ -8,11 +11,11 @@ Parameters.OneTubelength = givenVolume/(Parameters.InnerTubeDiameter^2*pi/4);
 Parameters.f1 = 0.01; % In case of just a few cells, sensitivity is pretty low
 Parameters
 hx = HeatExchanger;
-p = [70e5 70e5-1.57e5];
-h = [425e3 298e3];
+p = [85e5 85e5-1.57e5];
+h = [525e3 298e3];
 tau = [0.1 0.01 0.01];
 ODEoptions = [];
-nCell = 2;
+nCell = 4;
 hx.initialize(nCell,p,h,Parameters,tau,ODEoptions)
 Dm = 0.3186;
 inputs.hInlet = 525e3;
@@ -40,3 +43,11 @@ plot(hx.record.t,hx.record.x(:,2*nCell+1:3*nCell))
 subplot(414)
 plot(t_Dm,Dm);
 disp(['Number of CoolProp bugs were ' num2str(bugnumber)])
+figure(2)
+plot(partials')
+figure(3)
+plot(ratios')
+figure(4)
+plot(derivatives(1:4,:)')
+figure(5)
+plot(derivatives(5:8,:)')

@@ -49,8 +49,11 @@ classdef HeatExchanger < handle
                 try
                     Dd_Dp = CoolProp.PropsSI('d(D)/d(P)|H','H',hx.h(it),'P',hx.p(it),'CO2');
                     Dd_Dh = CoolProp.PropsSI('d(D)/d(H)|P','H',hx.h(it),'P',hx.p(it),'CO2');
+                    %Dd_Dp = 0.25e-4;
                     hx.Dd_Dp = Dd_Dp;
                     hx.Dd_Dh = Dd_Dh;
+                    global partials
+                    partials = [partials [Dd_Dp; Dd_Dh]];
                 catch
                     global bugnumber
                     bugnumber = bugnumber+1;
@@ -61,6 +64,9 @@ classdef HeatExchanger < handle
             hx.DpState = DpDh_vector(1,:)';
             hx.Dh = DpDh_vector(2,:)';
             hx.Dp = (hx.pState-hx.p)/hx.pStateTimeConstant;
+            global ratios derivatives
+            ratios = [ratios hx.DpState./Dpsi];
+            derivatives = [derivatives [hx.DpState; hx.Dh]];
         end
         function timestep(hx,t,inputs)
             % Function help: simulates the heat exchanger from time t1 to
