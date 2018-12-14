@@ -1,7 +1,6 @@
 clearvars
 global bugnumber partials ratios derivatives
 partials = [];
-ratios = [];
 bugnumber = 0;
 derivatives = [];
 givenVolume = 0.0192;
@@ -45,8 +44,6 @@ plot(t_Dm,Dm);
 disp(['Number of CoolProp bugs were ' num2str(bugnumber)])
 figure(2)
 plot(partials')
-figure(3)
-plot(ratios')
 figure(4)
 plot(derivatives(1:4,:)')
 figure(5)

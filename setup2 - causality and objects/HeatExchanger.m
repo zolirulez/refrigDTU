@@ -64,8 +64,7 @@ classdef HeatExchanger < handle
             hx.DpState = DpDh_vector(1,:)';
             hx.Dh = DpDh_vector(2,:)';
             hx.Dp = (hx.pState-hx.p)/hx.pStateTimeConstant;
-            global ratios derivatives
-            ratios = [ratios hx.DpState./Dpsi];
+            global derivatives
             derivatives = [derivatives [hx.DpState; hx.Dh]];
         end
         function timestep(hx,t,inputs)
