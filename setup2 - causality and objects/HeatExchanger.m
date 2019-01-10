@@ -1,4 +1,4 @@
-classdef HeatExchanger < handle
+classdef HeatExchanger < matlab.mixin.Copyable
     properties
         % Parameters
         OneTubeTotalVolume      % Total VLE volume of one tube
@@ -104,7 +104,7 @@ classdef HeatExchanger < handle
         function initialize(hx,nCell,p,h,Parameters,TimeConstants,ODEoptions)
             % Function help: provide two-element vectors for pressure and 
             %   enthalpy inlets and outlets, and provide volume.
-                 
+
             hx.nCell = nCell;
             hx.InnerTubeDiameter = Parameters.InnerTubeDiameter;
             hx.OneTubeLength = Parameters.OneTubelength;
@@ -121,9 +121,18 @@ classdef HeatExchanger < handle
             hx.h = linspace(h(1),h(2),nCell)';
             hx.ph2d;
             hx.ODEoptions = ODEoptions;
-            record.t = [];
-            record.x = [];
-            hx.record = record;
+            Record.t = [];
+            Record.x = [];
+            hx.record = Record;
+        end
+        function reinitialize(hx,p,h)
+            hx.p = linspace(p(1),p(2),hx.nCell)';
+            hx.pState = hx.p;
+            hx.pStateTimeConstant = TimeConstants(1);
+            hx.h = linspace(h(1),h(2),hx.nCell)';
+            hx.ph2d;
+            hx.record.t = [];
+            hx.record.x = [];
         end
         function discretize(hx)
             hx.OneTubeCellVolume = hx.OneTubeTotalVolume/hx.nCell;

@@ -1,4 +1,4 @@
-classdef PIController < handle
+classdef PIController < matlab.mixin.Copyable
    properties
        err  % Error
        int  % Integrated error

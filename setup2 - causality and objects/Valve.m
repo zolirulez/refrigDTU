@@ -1,25 +1,43 @@
-classdef Valve < handle
+classdef Valve < matlab.mixin.Copyable
    properties
       Kv
+      tau
+      DmState
+      DDm
+      record
+      hOutlet
    end
    methods
-      function mdot = flow(valve,capacityRatio,dInlet,pInlet,pOutlet)
+      function flow(valve,capacityRatio,dInlet,pInlet,pOutlet)
          % Kv value is in non-SI units!
          mdot = 8.7841e-06*capacityRatio*valve.Kv*sqrt(dInlet*(pInlet-pOutlet));
+         valve.DDm = (mdot - valve.Dm)/valve.tau;
       end
-      function hOutlet = enthalpy(valve,hInlet)
-          hOutlet = hInlet;
+      function enthalpy(valve,hInlet)
+          valve.hOutlet = hInlet;
       end
-      function [Dm, hOutlet] = process(valve,capacityRatio,Inputs)
+      function DDm = process(valve,t,x,Inputs)
+          % Inputs
           dInlet = Inputs.dInlet;
           pInlet = Inputs.pInlet;
           pOutlet = Inputs.pOutlet;
           hInlet = Inputs.hInlet;
-          Dm = flow(valve,capacityRatio,dInlet,pInlet,pOutlet);
-          hOutlet = enthalpy(valve,hInlet);
+          capacityRatio = Inputs.capacityRatio;
+          % State
+          valve.DmState = x;
+          % Process
+          valve.flow(capacityRatio,dInlet,pInlet,pOutlet);
+          valve.enthalpy(hInlet);
+          DDm = valve.DDm;
       end
-      function initialize(valve,Kv)
-          valve.Kv = Kv;      
+      function initialize(valve,Kv,Tau,Initial)
+          valve.Kv = Kv;
+          valve.tau = Tau;
+          valve.DmState = Initial;
+      end
+      function reinitialize(valve,Initial)
+          valve.DmState = Initial;
+          valve.record = [];
       end
    end
 end

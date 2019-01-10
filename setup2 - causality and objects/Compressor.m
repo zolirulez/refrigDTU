@@ -1,4 +1,4 @@
-classdef Compressor
+classdef Compressor   < matlab.mixin.Copyable
    properties
       Volume
       IsentropicEfficiency
