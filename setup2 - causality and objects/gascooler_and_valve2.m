@@ -3,10 +3,10 @@ global bugnumber
 bugnumber = 0;
 % Initialization
 givenVolume = 0.0192;
-Parameters.InnerTubeDiameter = 0.0192;
-Parameters.nParallelFlows = 20;
+Parameters.InnerTubeDiameter = 0.007;
+Parameters.nParallelFlows = 10;
 Parameters.OneTubelength = givenVolume/(Parameters.InnerTubeDiameter^2*pi/4);
-Parameters.f1 = 0.01; % In case of just a few cells, sensitivity is pretty low
+Parameters.f1 = 0.001; % In case of just a few cells, sensitivity is pretty low
 Parameters
 gc = HeatExchanger;
 p = [84.8e5 84.8e5-1.57e5];
@@ -32,17 +32,18 @@ Inputs.gcInputs.DQ = -ones(nCell,1)*Dm*(Inputs.gcInputs.hInlet-h(2))/nCell/Param
 Inputs.gcInputs.DmInlet = Dm;
 % Controller initialization
 PIvalve = PIController;
-K = 1e-5;
+K = 1e-7;
 Ti = 50;
 mn = 0;
 mx = 1;
 neg = -1;
 ref = 85e5;
-timestep = 1;
+timestep = 10;
 initInt = 0;
 PIvalve.initialize(K,Ti,initInt,mn,mx,neg,timestep);
 
 % Initialization of physical plant object
+ODEoptions.jancsi = 'jancsi';
 pp = PhysicalPlant;
 Parts.gc = gc;
 Parts.valve = valve;
@@ -53,7 +54,7 @@ Initial = [gc.p; gc.h; gc.d; Dm];
 pp.initialize(Parts,Process,PostProcess,Initial,ODEoptions);
 
 % Simulation
-itmax = 1000;
+itmax = 100;
 tic
 for it = 1:itmax
     % Controller

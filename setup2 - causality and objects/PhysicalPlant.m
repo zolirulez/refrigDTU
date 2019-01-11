@@ -26,6 +26,7 @@ classdef PhysicalPlant < matlab.mixin.Copyable
             pp.parts = Parts;
             pp.postProcess = PostProcess;
             pp.ODEoptions = ODEoptions;
+            %pp.ODEoptions.BDF = 'off';
             pp.t = [];
             pp.x = Initial;
         end
