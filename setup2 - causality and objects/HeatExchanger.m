@@ -61,11 +61,12 @@ classdef HeatExchanger < matlab.mixin.Copyable
                 DpDh_vector(:,it) = [-1 hx.d(it); hx.Dd_Dp hx.Dd_Dh]\...
                     [Dpsi(it); hx.Dd(it)];
             end
-            hx.DpState = DpDh_vector(1,:)';
+            % hx.DpState = DpDh_vector(1,:)';
+            hx.Dp = DpDh_vector(1,:)';
             hx.Dh = DpDh_vector(2,:)';
-            hx.Dp = (hx.pState-hx.p)/hx.pStateTimeConstant;
-            global derivatives
-            derivatives = [derivatives [hx.DpState; hx.Dh]];
+            %hx.Dp = (hx.pState-hx.p)/hx.pStateTimeConstant;
+            %global derivatives
+            %derivatives = [derivatives [hx.DpState; hx.Dh]];
         end
         function timestep(hx,t,inputs)
             % Function help: simulates the heat exchanger from time t1 to
@@ -79,7 +80,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
             hx.p = x(end,1:hx.nCell)';
             hx.h = x(end,hx.nCell+1:2*hx.nCell)';
             hx.d = x(end,2*hx.nCell+1:3*hx.nCell)';
-            hx.pState = x(end,3*hx.nCell+1:4*hx.nCell)';
+            %hx.pState = x(end,3*hx.nCell+1:4*hx.nCell)';
         end
         function Dx = process(hx,t,x,inputs)
             % Time
@@ -88,7 +89,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
             hx.p = x(1:hx.nCell,1);
             hx.h = x(hx.nCell+1:2*hx.nCell,1);
             hx.d = x(2*hx.nCell+1:3*hx.nCell,1);
-            hx.pState = x(3*hx.nCell+1:4*hx.nCell,1);
+            %hx.pState = x(3*hx.nCell+1:4*hx.nCell,1);
             % hx.dh2p;
             % Inputs
             DmInlet = inputs.DmInlet;
@@ -99,7 +100,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
             massflow(hx,DmInlet,DmOutlet);
             massAccummulation(hx);
             potentialAccummulation(hx,hInlet,DQ);
-            Dx = [hx.DpState; hx.Dh; hx.Dd; hx.DpState];
+            Dx = [hx.Dp; hx.Dh; hx.Dd];%[hx.DpState; hx.Dh; hx.Dd; hx.DpState];
         end
         function initialize(hx,nCell,p,h,Parameters,TimeConstants,ODEoptions)
             % Function help: provide two-element vectors for pressure and 

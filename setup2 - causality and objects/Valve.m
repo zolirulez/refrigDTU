@@ -11,7 +11,7 @@ classdef Valve < matlab.mixin.Copyable
       function flow(valve,capacityRatio,dInlet,pInlet,pOutlet)
          % Kv value is in non-SI units!
          mdot = 8.7841e-06*capacityRatio*valve.Kv*sqrt(dInlet*(pInlet-pOutlet));
-         valve.DDm = (mdot - valve.Dm)/valve.tau;
+         valve.DDm = (mdot - valve.DmState)/valve.tau;
       end
       function enthalpy(valve,hInlet)
           valve.hOutlet = hInlet;
@@ -34,10 +34,15 @@ classdef Valve < matlab.mixin.Copyable
           valve.Kv = Kv;
           valve.tau = Tau;
           valve.DmState = Initial;
+          % Record
+          Record.t = [];
+          Record.x = [];
+          valve.record = Record;
       end
       function reinitialize(valve,Initial)
           valve.DmState = Initial;
-          valve.record = [];
+          valve.record.t = [];
+          valve.record.x = [];
       end
    end
 end
