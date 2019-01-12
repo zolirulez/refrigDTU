@@ -1,5 +1,6 @@
 clearvars
-global bugnumber
+global bugnumber partials
+partials = [];
 bugnumber = 0;
 % Initialization
 givenVolume = 0.0192;
