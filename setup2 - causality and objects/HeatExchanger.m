@@ -16,12 +16,9 @@ classdef HeatExchanger < matlab.mixin.Copyable
         p                       % Pressure
         h                       % Enthalpy
         d                       % Density
-        pState                  % Pressure state for smoothing
-        pStateTimeConstant      % First order time constant for pState
         Dp                      % Pressure derivative
         Dh                      % Enthalpy derivative
         Dd                      % Density derivative
-        DpState                 % Pressure state derivative
         record                  % Record of results
         ODEoptions              % Options of ODE solver
         t                       % Last time instant
@@ -37,7 +34,6 @@ classdef HeatExchanger < matlab.mixin.Copyable
                 /hx.OneTubeCellResistance;
             hx.Dm  = [DmInlet/hx.nParallelFlows; inducedDm;...
                 DmOutlet/hx.nParallelFlows];
-%            hx.Dm  = DmInlet/hx.nParallelFlows*ones(hx.nCell+1,1);
         end
         function massAccummulation(hx)
             hx.Dd = -diff(hx.Dm)/hx.OneTubeCellVolume;
@@ -61,12 +57,8 @@ classdef HeatExchanger < matlab.mixin.Copyable
                 DpDh_vector(:,it) = [-1 hx.d(it); hx.Dd_Dp hx.Dd_Dh]\...
                     [Dpsi(it); hx.Dd(it)];
             end
-            % hx.DpState = DpDh_vector(1,:)';
             hx.Dp = DpDh_vector(1,:)';
             hx.Dh = DpDh_vector(2,:)';
-            %hx.Dp = (hx.pState-hx.p)/hx.pStateTimeConstant;
-            %global derivatives
-            %derivatives = [derivatives [hx.DpState; hx.Dh]];
         end
         function timestep(hx,t,inputs)
             % Function help: simulates the heat exchanger from time t1 to
@@ -89,8 +81,6 @@ classdef HeatExchanger < matlab.mixin.Copyable
             hx.p = x(1:hx.nCell,1);
             hx.h = x(hx.nCell+1:2*hx.nCell,1);
             hx.d = x(2*hx.nCell+1:3*hx.nCell,1);
-            %hx.pState = x(3*hx.nCell+1:4*hx.nCell,1);
-            % hx.dh2p;
             % Inputs
             DmInlet = inputs.DmInlet;
             DmOutlet = inputs.DmOutlet;
@@ -100,9 +90,9 @@ classdef HeatExchanger < matlab.mixin.Copyable
             massflow(hx,DmInlet,DmOutlet);
             massAccummulation(hx);
             potentialAccummulation(hx,hInlet,DQ);
-            Dx = [hx.Dp; hx.Dh; hx.Dd];%[hx.DpState; hx.Dh; hx.Dd; hx.DpState];
+            Dx = [hx.Dp; hx.Dh; hx.Dd];%
         end
-        function initialize(hx,nCell,p,h,Parameters,TimeConstants,ODEoptions)
+        function initialize(hx,nCell,p,h,Parameters,ODEoptions)
             % Function help: provide two-element vectors for pressure and 
             %   enthalpy inlets and outlets, and provide volume.
 
@@ -117,8 +107,6 @@ classdef HeatExchanger < matlab.mixin.Copyable
                 (pi^2*hx.InnerTubeDiameter^5));
             hx.discretize();
             hx.p = linspace(p(1),p(2),nCell)';
-            hx.pState = hx.p;
-            hx.pStateTimeConstant = TimeConstants(1);
             hx.h = linspace(h(1),h(2),nCell)';
             hx.ph2d;
             hx.ODEoptions = ODEoptions;
@@ -128,8 +116,6 @@ classdef HeatExchanger < matlab.mixin.Copyable
         end
         function reinitialize(hx,p,h)
             hx.p = linspace(p(1),p(2),hx.nCell)';
-            hx.pState = hx.p;
-            hx.pStateTimeConstant = TimeConstants(1);
             hx.h = linspace(h(1),h(2),hx.nCell)';
             hx.ph2d;
             hx.record.t = [];

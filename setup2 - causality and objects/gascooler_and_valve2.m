@@ -15,7 +15,7 @@ h = [525e3 298e3];
 Tau = 0.1;
 ODEoptions = [];
 nCell = 2;
-gc.initialize(nCell,p,h,Parameters,Tau,ODEoptions)
+gc.initialize(nCell,p,h,Parameters,ODEoptions)
 Dm = 0.3186;
 % Valve initialization
 valve = Valve;
