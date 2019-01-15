@@ -16,9 +16,11 @@ classdef Receiver   < matlab.mixin.Copyable % TODO
         % Partial derivatives
         Dd_Dh
         Dd_Dp
-        % Outlet enthalpies
+        % Outlet states
         hGas
         hLiquid
+        dGas
+        dLiquid
     end
     methods
         function massAccummulation(rec,DmInlet,DmGas,DmLiquid)
@@ -27,10 +29,12 @@ classdef Receiver   < matlab.mixin.Copyable % TODO
         function separation(rec)
             rec.hGas = CoolProp.PropsSI('H','P',rec.p,'Q',1,'CO2');
             rec.hLiquid = CoolProp.PropsSI('H','P',rec.p,'Q',0,'CO2');
+            rec.dGas = CoolProp.PropsSI('D','P',rec.p,'H',rec.hGas,'CO2');
+            rec.dLiquid = CoolProp.PropsSI('D','P',rec.p,'H',rec.hLiquid,'CO2');
             if rec.hGas < rec.h
-                print('Error: receiver is empty of liquid')
+                disp('Error: receiver is empty of liquid')
             elseif rec.hLiquid > rec.h
-                print('Error: receiver is full of liquid')
+                disp('Error: receiver is full of liquid')
             end
         end
         function potentialAccummulation(rec,hInlet,DmInlet,DmGas,DmLiquid)
@@ -62,7 +66,7 @@ classdef Receiver   < matlab.mixin.Copyable % TODO
             rec.h = x(end,2)';
             rec.d = x(end,3)';
         end
-        function Dx = process(rec,t,x,inputs)
+        function Dx = process(rec,t,x,Inputs)
             % Time
             rec.t = t;
             % States
@@ -70,10 +74,10 @@ classdef Receiver   < matlab.mixin.Copyable % TODO
             rec.h = x(2,1);
             rec.d = x(3,1);
             % Inputs
-            DmInlet = inputs.DmInlet;
-            DmLiquid = inputs.DmLiquid;
-            DmGas = inputs.DmGas;
-            hInlet = inputs.hInlet;
+            DmInlet = Inputs.DmInlet;
+            DmLiquid = Inputs.DmLiquid;
+            DmGas = Inputs.DmGas;
+            hInlet = Inputs.hInlet;
             % Process
             rec.massAccummulation(DmInlet,DmGas,DmLiquid);
             rec.separation();
