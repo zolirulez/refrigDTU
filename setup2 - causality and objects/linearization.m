@@ -36,16 +36,16 @@ G = jacobian(Dx,d);
 % Substitutions check the values TODO
 A = subs(A,{p1 p2 pR pEC},num2cell([86 84.8 38 30]*10^5));
 A = subs(A,{h1 h2 hMT hL hG hR},num2cell([500 350 525 250 400 300]*10^3));
-A = subs(A,{d1 d2 dR},num2cell([2.8 7 4]*10^2));
+A = subs(A,{d1 d2 dR},num2cell([2.8 7 2.2]*10^2));
 A = subs(A,{DmV DmMT DmG DmL},num2cell([0.321 0.321 0.123 0.198]*10^0));
 A = subs(A,{CRV CRG},num2cell([0.25 0.25]*10^0));
 A = subs(A,{DQ},num2cell([-74.3]*10^3));
-A = subs(A,{KvV KvG},num2cell([0.8 2]*10^0));
+A = subs(A,{KvV KvG},num2cell([0.8 2]*8.7841e-06));
 A = subs(A,{TauV TauG},num2cell([0.1 0.1]*10^0));
 A = subs(A,{R},num2cell([1.5]*10^5)); % TODO
 A = subs(A,{VGC VR},num2cell([19.2 133]*10^-3));
-A = subs(A,{DdDp1 DdDp2 DdDpR},num2cell([3 3 3]*10^-5)); % TODO
-A = subs(A,{DdDh1 DdDh2 DdDhR},num2cell([-2 -4 -5]*10^-3)); % TODO
+A = subs(A,{DdDp1 DdDp2 DdDpR},num2cell([3 3 4]*10^-5));
+A = subs(A,{DdDh1 DdDh2 DdDhR},num2cell([-2 -4 -1.5]*10^-3));
 A = double(A);
 % Normalizing with maximum deviations
 % x = [p1; h1; d1; p2; h2; d2; DmV; pR; hR; dR; DmG];
@@ -68,7 +68,9 @@ title('Pieceswise exponential of normalized system A, bounded by -10...10')
 % Separating real and imaginary values
 % Is this right? should not be first the inverse, then the reordering?
 % (This was just a copy paste from the exercise on LCD2)
-V = [V(:,1) real(V(:,2)) imag(V(:,2)) real(V(:,4)) imag(V(:,4)) V(:,6:end)];
+invV = inv(V);
+invV = [invV(1,:); real(invV(2,:)); imag(invV(2,:)); real(invV(4,:)); imag(invV(4,:)); invV(6:end,:)];
+%V = [V(:,1) real(V(:,2)) imag(V(:,2)) real(V(:,4)) imag(V(:,4)) V(:,6:end)];
 figure(2)
 subplot(131)
 imagexpeigA = sign(imag(eigA)).*exp(abs(imag(eigA)));

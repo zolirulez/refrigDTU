@@ -37,8 +37,8 @@ classdef Receiver   < matlab.mixin.Copyable % TODO
             Dpsi = [DmInlet -DmGas -DmLiquid]*...
                 [hInlet; rec.hGas; rec.hLiquid]/rec.Volume;
             try
-                Dd_Dp = CoolProp.PropsSI('d(D)/d(P)|H','H',rec.h(it),'P',rec.p(it),'CO2');
-                Dd_Dh = CoolProp.PropsSI('d(D)/d(H)|P','H',rec.h(it),'P',rec.p(it),'CO2');
+                Dd_Dp = CoolProp.PropsSI('d(D)/d(P)|H','H',rec.h,'P',rec.p,'CO2');
+                Dd_Dh = CoolProp.PropsSI('d(D)/d(H)|P','H',rec.h,'P',rec.p,'CO2');
                 rec.Dd_Dp = Dd_Dp;
                 rec.Dd_Dh = Dd_Dh;
                 global partials
@@ -60,7 +60,7 @@ classdef Receiver   < matlab.mixin.Copyable % TODO
             rec.record.x = [rec.record.x; x];
             rec.p = x(end,1)';
             rec.h = x(end,2)';
-            rec.d = x(end,2)';
+            rec.d = x(end,3)';
         end
         function Dx = process(rec,t,x,inputs)
             % Time
@@ -76,8 +76,8 @@ classdef Receiver   < matlab.mixin.Copyable % TODO
             hInlet = inputs.hInlet;
             % Process
             rec.massAccummulation(DmInlet,DmGas,DmLiquid);
-            rec.potentialAccummulation(hInlet,DmInlet,DmGas,DmLiquid);
             rec.separation();
+            rec.potentialAccummulation(hInlet,DmInlet,DmGas,DmLiquid);
             Dx = [rec.Dp; rec.Dh; rec.Dd];
         end
         function initialize(rec,p,h,Volume,ODEoptions)
