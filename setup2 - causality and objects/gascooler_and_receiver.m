@@ -119,65 +119,79 @@ disp(['Number of CoolProp bugs were ' num2str(bugnumber)])
 function Dx = process(t,x,pp)
 % In this function, all the subprocesses are called, and their connections
 % are arranged
+    % Handles for shorts
+    gc = pp.parts.gc;
+    HPValve = pp.parts.HPValve;
+    rec = pp.parts.rec;
+    recValve = pp.parts.recValve;
+    gcInputs = pp.Inputs.gcInputs;
+    HPValveInputs = pp.Inputs.HPValveInputs;
+    recInputs = pp.Inputs.recInputs;
+    recValveInputs = pp.Inputs.recValveInputs;
     % States
-    xGC = x(1:pp.parts.gc.nCell*3);
-    xHPValve = x(pp.parts.gc.nCell*3+1);
-    xRec = x(pp.parts.gc.nCell*3+2:pp.parts.gc.nCell*3+4);
-    xRecValve = x(pp.parts.gc.nCell*3+5);
-    pp.parts.gc.p = xGC(1:pp.parts.gc.nCell);
-    pp.parts.gc.h = xGC(pp.parts.gc.nCell+1:2*pp.parts.gc.nCell);
-    pp.parts.gc.d = xGC(2*pp.parts.gc.nCell+1:3*pp.parts.gc.nCell);
-    pp.parts.HPValve.DmState = xHPValve;
-    pp.parts.rec.p = xRec(1);
-    pp.parts.rec.h = xRec(2);
-    pp.parts.rec.d = xRec(3);
-    pp.parts.recValve.DmState = xRecValve;
+    xGC = x(1:gc.nCell*3);
+    xHPValve = x(gc.nCell*3+1);
+    xRec = x(gc.nCell*3+2:gc.nCell*3+4);
+    xRecValve = x(gc.nCell*3+5);
+    gc.p = xGC(1:gc.nCell);
+    gc.h = xGC(gc.nCell+1:2*gc.nCell);
+    gc.d = xGC(2*gc.nCell+1:3*gc.nCell);
+    HPValve.DmState = xHPValve;
+    rec.p = xRec(1);
+    rec.h = xRec(2);
+    rec.d = xRec(3);
+    recValve.DmState = xRecValve;
     % Static equations
-    pp.parts.HPValve.enthalpy(pp.parts.gc.h(end));
-    pp.parts.recValve.enthalpy(pp.parts.rec.hGas);
+    pp.parts.HPValve.enthalpy(gc.h(end));
+    pp.parts.recValve.enthalpy(rec.hGas);
     pp.parts.rec.separation();
     % Inputs
-    pp.Inputs.recValveInputs.dInlet = pp.parts.rec.dGas;
-    pp.Inputs.recValveInputs.pInlet = pp.parts.rec.p;
-    pp.Inputs.recValveInputs.hInlet = pp.parts.rec.hGas;
-    pp.Inputs.recInputs.DmGas = pp.parts.recValve.DmState;
-    pp.Inputs.recInputs.DmInlet = pp.parts.HPValve.DmState;
-    pp.Inputs.recInputs.hInlet = pp.parts.HPValve.hOutlet;
-    pp.Inputs.HPValveInputs.dInlet = pp.parts.gc.d(end);
-    pp.Inputs.HPValveInputs.pInlet = pp.parts.gc.p(end);
-    pp.Inputs.HPValveInputs.hInlet = pp.parts.gc.h(end);
-    pp.Inputs.HPValveInputs.pOutlet = pp.parts.rec.p;
-    pp.Inputs.gcInputs.DmOutlet = pp.parts.HPValve.DmState;
+    recValveInputs.dInlet = rec.dGas;
+    recValveInputs.pInlet = rec.p;
+    recValveInputs.hInlet = rec.hGas;
+    recInputs.DmGas = recValve.DmState;
+    recInputs.DmInlet = HPValve.DmState;
+    recInputs.hInlet = HPValve.hOutlet;
+    HPValveInputs.dInlet = gc.d(end);
+    HPValveInputs.pInlet = gc.p(end);
+    HPValveInputs.hInlet = gc.h(end);
+    HPValveInputs.pOutlet = rec.p;
+    gcInputs.DmOutlet = HPValve.DmState;
     % Receiver Valve
-    DRecValve = pp.parts.recValve.process(t,xRecValve,pp.Inputs.recValveInputs);
+    DRecValve = recValve.process(t,xRecValve,recValveInputs);
     % Receiver
-    DRec = pp.parts.rec.process(t,xRec,pp.Inputs.recInputs);
+    DRec = rec.process(t,xRec,recInputs);
     % HP Valve
-    DHPValve = pp.parts.HPValve.process(t,xHPValve,pp.Inputs.HPValveInputs);
+    DHPValve = HPValve.process(t,xHPValve,HPValveInputs);
     % Gas cooler
-    DGC = pp.parts.gc.process(t,xGC,pp.Inputs.gcInputs);
+    DGC = gc.process(t,xGC,gcInputs);
     % Derivative
     Dx = [DGC; DHPValve; DRec; DRecValve];
 end
 function postProcess(X,pp)
 % In this function, the states and the records are updated
+    % Handles for shorts
+    gc = pp.parts.gc;
+    HPValve = pp.parts.HPValve;
+    rec = pp.parts.rec;
+    recValve = pp.parts.recValve;
     % States
-    XGC = X(:,1:pp.parts.gc.nCell*3);
-    XHPValve = X(:,pp.parts.gc.nCell*3+1);
-    XRec = X(:,pp.parts.gc.nCell*3+2:pp.parts.gc.nCell*3+4);
-    XRecValve = X(:,pp.parts.gc.nCell*3+5);
+    XGC = X(:,1:gc.nCell*3);
+    XHPValve = X(:,gc.nCell*3+1);
+    XRec = X(:,gc.nCell*3+2:gc.nCell*3+4);
+    XRecValve = X(:,gc.nCell*3+5);
     % Recording
-    pp.parts.gc.record.x = [pp.parts.gc.record.x; XGC];
-    pp.parts.HPValve.record.x = [pp.parts.HPValve.record.x; XHPValve];
-    pp.parts.rec.record.x = [pp.parts.rec.record.x; XRec];
-    pp.parts.recValve.record.x = [pp.parts.recValve.record.x; XRecValve];
+    gc.record.x = [gc.record.x; XGC];
+    HPValve.record.x = [HPValve.record.x; XHPValve];
+    rec.record.x = [rec.record.x; XRec];
+    recValve.record.x = [recValve.record.x; XRecValve];
     % State setting for next iteration
-    pp.parts.gc.p = XGC(end,1:pp.parts.gc.nCell)';
-    pp.parts.gc.h = XGC(end,pp.parts.gc.nCell+1:2*pp.parts.gc.nCell)';
-    pp.parts.gc.d = XGC(end,2*pp.parts.gc.nCell+1:3*pp.parts.gc.nCell)';
-    pp.parts.rec.p = XRec(end,1);
-    pp.parts.rec.h = XRec(end,2);
-    pp.parts.rec.d = XRec(end,3);
-    pp.parts.HPValve.DmState = XHPValve(end,1);
-    pp.parts.recValve.DmState = XRecValve(end,1);
+    gc.p = XGC(end,1:gc.nCell)';
+    gc.h = XGC(end,gc.nCell+1:2*gc.nCell)';
+    gc.d = XGC(end,2*gc.nCell+1:3*gc.nCell)';
+    rec.p = XRec(end,1);
+    rec.h = XRec(end,2);
+    rec.d = XRec(end,3);
+    HPValve.DmState = XHPValve(end,1);
+    recValve.DmState = XRecValve(end,1);
 end
