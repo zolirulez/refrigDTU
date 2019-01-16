@@ -9,8 +9,12 @@ classdef Valve < matlab.mixin.Copyable
    end
    methods
       function flow(valve,capacityRatio,dInlet,pInlet,pOutlet)
+%           if capacityRatio == 1
+%               disp('itt')
+%           end
          % Kv value is in non-SI units!
-         Dm = max([0,8.7841e-06*capacityRatio*valve.Kv*sqrt(dInlet*(pInlet-pOutlet)) 0]);
+         deltap = max([0,pInlet-pOutlet]);
+         Dm = 8.7841e-06*capacityRatio*valve.Kv*sqrt(dInlet*(deltap)) ;
          valve.DDm = (Dm - valve.DmState)/valve.tau;
       end
       function enthalpy(valve,hInlet)

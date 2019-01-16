@@ -23,7 +23,7 @@ Inputs.HPValveInputs.dInlet = gc.d(end);
 Inputs.HPValveInputs.pInlet = gc.p(end);
 Inputs.HPValveInputs.hInlet = gc.h(end);
 Inputs.HPValveInputs.pOutlet = 38e5;
-Inputs.HPValveInputs.capacityRatio = 0;
+Inputs.HPValveInputs.capacityRatio = 0.01;
 HPValve.enthalpy(Inputs.HPValveInputs.hInlet);
 % Gas Cooler input initialization
 Inputs.gcInputs.hInlet = h(1);
@@ -50,7 +50,7 @@ Inputs.recValveInputs.dInlet = rec.dGas;
 Inputs.recValveInputs.pInlet = rec.p;
 Inputs.recValveInputs.hInlet = rec.hGas;
 Inputs.recValveInputs.pOutlet = 30e5;
-Inputs.recValveInputs.capacityRatio = 0;
+Inputs.recValveInputs.capacityRatio = 1;
 % Controller initialization
 PIHPValve = PIController;
 PIrecValve = PIController;
@@ -61,11 +61,11 @@ mx = 1;
 neg = -1;
 refHP = 85e5;
 refRec = 38e5;
-timestep = 5;
+timestep = 1;
 initInt = 0;
 PIHPValve.initialize(K,Ti,initInt,mn,mx,neg,timestep);
-K = 10^-6.5;
-Ti = 50;
+K = 10^-5;
+Ti = Inf;
 PIrecValve.initialize(K,Ti,initInt,mn,mx,neg,timestep);
 
 
@@ -90,8 +90,8 @@ itmax = 100;
 tic
 for it = 1:itmax
     % Controller
-    pp.Inputs.recValveInputs.capacityRatio = PIrecValve.react(refRec,pp.parts.rec.p);
-    pp.Inputs.HPValveInputs.capacityRatio =  PIHPValve.react(refHP,pp.parts.gc.p(end));
+    Inputs.recValveInputs.capacityRatio = PIrecValve.react(refRec,pp.parts.rec.p);
+    Inputs.HPValveInputs.capacityRatio = PIHPValve.react(refHP,pp.parts.gc.p(end));
     % Physical Plant
     pp.timestep(((it-1):it)*timestep);
 end
@@ -116,6 +116,11 @@ plot(pp.t,pp.parts.recValve.record.x);
 disp(['Number of CoolProp bugs were ' num2str(bugnumber)])
 
 % Functions for Physical Plant
+function Inputs = preProcess(Inputs,pp)
+% In this function, only controller related inputs are changed
+pp.Inputs.recValveInputs.capacityRatio = Inputs.recValveInputs.capacityRatio;
+pp.Inputs.HPValveInputs.capacityRatio = Inputs.HPValveInputs.capacityRatio;
+end
 function Dx = process(t,x,pp)
 % In this function, all the subprocesses are called, and their connections
 % are arranged
@@ -133,8 +138,6 @@ function Dx = process(t,x,pp)
     pp.parts.rec.d = xRec(3);
     pp.parts.recValve.DmState = xRecValve;
     % Static equations
-    pp.parts.HPValve.enthalpy(pp.parts.gc.h(end));
-    pp.parts.recValve.enthalpy(pp.parts.rec.hGas);
     pp.parts.rec.separation();
     % Inputs
     pp.Inputs.recValveInputs.dInlet = pp.parts.rec.dGas;
