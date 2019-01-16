@@ -1,7 +1,7 @@
 clearvars
 close all
 syms KvV KvG TauV TauG R VGC VR DdDp1 DdDh1 DdDp2 DdDh2 DdDpR DdDhR
-syms p1 p2 pR pEC h1 h2 hMT hL hG hR d1 d2 dR DQ CRV CRG DmV DmMT DmG DmL 
+syms p1 p2 pR pEC h1 h2 hMT hL hG hR d1 d2 dR dG DQ CRV CRG DmV DmMT DmG DmL 
 % High pressure valve
 DDmV = 1/TauV*(-DmV + CRV*KvV*sqrt(d2*(p2 - pR)));
 % Gas cooler
@@ -19,8 +19,8 @@ DdR = 1/VR*(DmV-DmL-DmG);
 JointR = [-1 dR; DdDpR DdDhR];
 DPsiR = 1/VR*(DmV*h2 - DmL*hL - DmG*hG);
 DphR = JointR\[DPsiR; DdR];
-% Receiver valve
-DDmG = 1/TauG*(-DmG + CRG*KvG*sqrt(dR*(pR - pEC)));
+% Receiver valve: density is set as constant
+DDmG = 1/TauG*(-DmG + CRG*KvG*sqrt(dG*(pR - pEC)));
 % Augmentation
 Dx = [Dph1; Dd1; Dph2; Dd2; DDmV; DphR; DdR; DDmG];
 x = [p1; h1; d1; p2; h2; d2; DmV; pR; hR; dR; DmG];
@@ -36,7 +36,7 @@ G = jacobian(Dx,d);
 % Substitutions check the values TODO
 A = subs(A,{p1 p2 pR pEC},num2cell([86 84.8 38 30]*10^5));
 A = subs(A,{h1 h2 hMT hL hG hR},num2cell([500 350 525 250 400 300]*10^3));
-A = subs(A,{d1 d2 dR},num2cell([2.8 7 2.2]*10^2));
+A = subs(A,{d1 d2 dR dG},num2cell([2.8 7 2.2 1]*10^2));
 A = subs(A,{DmV DmMT DmG DmL},num2cell([0.321 0.321 0.123 0.198]*10^0));
 A = subs(A,{CRV CRG},num2cell([0.25 0.25]*10^0));
 A = subs(A,{DQ},num2cell([-74.3]*10^3));
@@ -64,18 +64,18 @@ xlabel(char(x))
 ylabel(['Diff' char(x)])
 title('Pieceswise exponential of normalized system A, bounded by -10...10')
 % Modal analysis
-[V,eigA] = eig(A);
-% Separating real and imaginary values
+[~,eigA,W] = eig(A);
+% Separating real and imaginary value?
+W = W';
+% W = [W(1:6,:); real(W(7,:)); imag(W(7,:)); W(9:end,:)];
 % Is this right? should not be first the inverse, then the reordering?
 % (This was just a copy paste from the exercise on LCD2)
-invV = inv(V);
-invV = [invV(1,:); real(invV(2,:)); imag(invV(2,:)); real(invV(4,:)); imag(invV(4,:)); invV(6:end,:)];
 %V = [V(:,1) real(V(:,2)) imag(V(:,2)) real(V(:,4)) imag(V(:,4)) V(:,6:end)];
 figure(2)
 subplot(131)
 imagexpeigA = sign(imag(eigA)).*exp(abs(imag(eigA)));
 imagexpeigA(imag(eigA)==0) = 0;
-imagesc(imagexpeigA,[-1*10^108.5 1*10^108.5])
+imagesc(imagexpeigA,[-10^0.5 10^0.5])
 colormap('jet')
 colorbar
 xlabel('z')
@@ -91,10 +91,10 @@ xlabel('z')
 ylabel('Dz')
 title('realexpeigA')
 subplot(133)
-imagesc(inv(V),[-10 10])
+imagesc(W,[-10^0.2 10^0.2])
 % imagesc(V',[-1 1])
 colormap('jet')
 colorbar
 xlabel(char(x))
 ylabel('z')
-title('V^-^1 reordered')
+title('W^T')

@@ -3,19 +3,24 @@ classdef PhysicalPlant < matlab.mixin.Copyable
         parts
         ODEoptions
         process
+        preProcess
         postProcess
         t
         x
+        Inputs
     end
     methods
-        function timestep(pp,t,inputs)
+        function timestep(pp,t)
             % Function help:
             
-            [T, X] = ode15s(@pp.process,[t(1) t(2)],pp.x,pp.ODEoptions,inputs,pp);
+            [T, X] = ode15s(@pp.process,[t(1) t(2)],pp.x,pp.ODEoptions,pp);
             pp.t = [pp.t; T];
             pp.x = X(end,:)';
             % Evaluation
             pp.postProcess(X,pp);
+        end
+        function initialInputs(pp,Inputs)
+            pp.Inputs = Inputs;
         end
         function initialize(pp,Parts,Process,PostProcess,Initial,ODEoptions)
             % Function help: Process and PostProcess are functions, while
