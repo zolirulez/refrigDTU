@@ -1,21 +1,5 @@
-classdef Receiver   < matlab.mixin.Copyable % TODO
+classdef Receiver   < Tank
     properties
-        % Parameters
-        Volume      % Total VLE volume 
-        % Variables
-        Dm                      % Mass flow rate
-        p                       % Pressure
-        h                       % Enthalpy
-        d                       % Density
-        Dp                      % Pressure derivative
-        Dh                      % Enthalpy derivative
-        Dd                      % Density derivative
-        record                  % Record of results
-        ODEoptions              % Options of ODE solver
-        t                       % Last time instant
-        % Partial derivatives
-        Dd_Dh
-        Dd_Dp
         % Outlet states
         hGas
         hLiquid
@@ -23,9 +7,6 @@ classdef Receiver   < matlab.mixin.Copyable % TODO
         dLiquid
     end
     methods
-        function massAccummulation(rec,DmInlet,DmGas,DmLiquid)
-            rec.Dd = (DmInlet - DmGas - DmLiquid)/rec.Volume;
-        end
         function separation(rec)
             rec.hGas = CoolProp.PropsSI('H','P',rec.p,'Q',1,'CO2');
             rec.hLiquid = CoolProp.PropsSI('H','P',rec.p,'Q',0,'CO2');
@@ -37,23 +18,9 @@ classdef Receiver   < matlab.mixin.Copyable % TODO
                 disp('Error: receiver is full of liquid')
             end
         end
-        function potentialAccummulation(rec,hInlet,DmInlet,DmGas,DmLiquid)
-            Dpsi = [DmInlet -DmGas -DmLiquid]*...
+        function excitation(rec,hInlet,DmInlet,DmGas,DmLiquid)
+            rec.Dpsi = [DmInlet -DmGas -DmLiquid]*...
                 [hInlet; rec.hGas; rec.hLiquid]/rec.Volume;
-            try
-                Dd_Dp = CoolProp.PropsSI('d(D)/d(P)|H','H',rec.h,'P',rec.p,'CO2');
-                Dd_Dh = CoolProp.PropsSI('d(D)/d(H)|P','H',rec.h,'P',rec.p,'CO2');
-                rec.Dd_Dp = Dd_Dp;
-                rec.Dd_Dh = Dd_Dh;
-                global partials
-                partials = [partials [Dd_Dp; Dd_Dh]];
-            catch
-                global bugnumber
-                bugnumber = bugnumber+1;
-            end
-            DpDh_vector = [-1 rec.d; rec.Dd_Dp rec.Dd_Dh]\[Dpsi; rec.Dd];
-            rec.Dp = DpDh_vector(1,1);
-            rec.Dh = DpDh_vector(2,1);
         end
         function timestep(rec,t,inputs)
             % Function help: 
@@ -79,36 +46,18 @@ classdef Receiver   < matlab.mixin.Copyable % TODO
             DmGas = Inputs.DmGas;
             hInlet = Inputs.hInlet;
             % Process
-            rec.massAccummulation(DmInlet,DmGas,DmLiquid);
+            rec.massAccummulation(DmInlet,DmGas+DmLiquid);
+            rec.excitation(hInlet,DmInlet,DmGas,DmLiquid);
             rec.separation();
-            rec.potentialAccummulation(hInlet,DmInlet,DmGas,DmLiquid);
+            rec.potentialAccummulation();
             Dx = [rec.Dp; rec.Dh; rec.Dd];
         end
         function initialize(rec,p,h,Volume,ODEoptions)
             % Function help: provide initial pressure, enthalpy, and the
-            %   volume
+            %   volume, and calculates separations
 
-            rec.Volume = Volume;
-            rec.p = p;
-            rec.h = h;
-            rec.ph2d;
-            rec.ODEoptions = ODEoptions;
-            Record.t = [];
-            Record.x = [];
-            rec.record = Record;
-        end
-        function reinitialize(rec,p,h)
-            rec.p = p;
-            rec.h = h;
-            rec.ph2d;
-            rec.record.t = [];
-            rec.record.x = [];
-        end
-        function ph2d(rec)
-            rec.d = CoolProp.PropsSI('D','P',rec.p,'H',rec.h,'CO2');
-        end
-        function dh2p(rec)
-            rec.p = CoolProp.PropsSI('P','D',rec.d,'H',rec.h,'CO2');
+            initialize@Tank(rec,p,h,Volume,ODEoptions);
+            rec.separation();
         end
     end
 end

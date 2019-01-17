@@ -51,6 +51,13 @@ Inputs.recValveInputs.pInlet = rec.p;
 Inputs.recValveInputs.hInlet = rec.hGas;
 Inputs.recValveInputs.pOutlet = 30e5;
 Inputs.recValveInputs.capacityRatio = 0;
+% Volume initialization
+% Compressor initialization
+% comp = Compressor;
+% IsentropicEfficiency = 0.9;
+% Displacement = Dm/CoolProp.PropsSI('D','H',450e3,'P',30e5,'CO2')/20; % TODO
+% Initial = Dm;
+% comp.initialize(IsentropicEfficiency,Displacement,Tau,Initial);
 % Controller initialization
 PIHPValve = PIController;
 PIrecValve = PIController;
