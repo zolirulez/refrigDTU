@@ -18,21 +18,6 @@ classdef Receiver   < Tank
                 disp('Error: receiver is full of liquid')
             end
         end
-        function excitation(rec,hInlet,DmInlet,DmGas,DmLiquid)
-            rec.Dpsi = [DmInlet -DmGas -DmLiquid]*...
-                [hInlet; rec.hGas; rec.hLiquid]/rec.Volume;
-        end
-        function timestep(rec,t,inputs)
-            % Function help: 
-            
-            x = [rec.p; rec.h; rec.d;];
-            [t, x] = ode15s(@rec.process,[t(1) t(2)],x,rec.ODEoptions,inputs);
-            rec.record.t = [rec.record.t; t];
-            rec.record.x = [rec.record.x; x];
-            rec.p = x(end,1)';
-            rec.h = x(end,2)';
-            rec.d = x(end,3)';
-        end
         function Dx = process(rec,t,x,Inputs)
             % Time
             rec.t = t;
@@ -47,8 +32,9 @@ classdef Receiver   < Tank
             hInlet = Inputs.hInlet;
             % Process
             rec.massAccummulation(DmInlet,DmGas+DmLiquid);
-            rec.excitation(hInlet,DmInlet,DmGas,DmLiquid);
             rec.separation();
+            rec.excitation([hInlet; rec.hGas; rec.hLiquid],...
+                [DmInlet; -DmGas; -DmLiquid],[],[]);
             rec.potentialAccummulation();
             Dx = [rec.Dp; rec.Dh; rec.Dd];
         end

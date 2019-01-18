@@ -22,8 +22,9 @@ classdef Tank < matlab.mixin.Copyable
         function massAccummulation(tank,DmInlet,DmOutlet)
             tank.Dd = (DmInlet - DmOutlet)/tank.Volume;
         end
-        function excitation(tank,hInlet,DmInlet,DmOutlet)
-            tank.Dpsi = [DmInlet -DmOutlet]*[hInlet; tank.h]/tank.Volume;
+        function excitation(tank,hInlet,DmInlet,DmOutlet,DQ)
+            tank.Dpsi = ([DmInlet' -DmOutlet']*...
+                [hInlet; tank.h*ones(size(DmOutlet))] + DQ)/tank.Volume;
         end
         function potentialAccummulation(tank)
             try
@@ -44,10 +45,10 @@ classdef Tank < matlab.mixin.Copyable
         function timestep(tank,t,inputs)
             % Function help: 
             
-            x = [tank.p; tank.h; tank.d;];
+            x = [tank.p; tank.h; tank.d];
             [t, x] = ode15s(@tank.process,[t(1) t(2)],x,tank.ODEoptions,inputs);
-            tank.volord.t = [tank.volord.t; t];
-            tank.volord.x = [tank.volord.x; x];
+            tank.record.t = [tank.record.t; t];
+            tank.record.x = [tank.record.x; x];
             tank.p = x(end,1)';
             tank.h = x(end,2)';
             tank.d = x(end,3)';
@@ -61,13 +62,13 @@ classdef Tank < matlab.mixin.Copyable
             tank.d = x(3,1);
             % Inputs
             DmInlet = Inputs.DmInlet;
-            DmLiquid = Inputs.DmLiquid;
-            DmGas = Inputs.DmGas;
+            DmOutlet = Inputs.DmOutlet;
             hInlet = Inputs.hInlet;
+            DQ = Inputs.DQ;
             % Process
-            tank.massAccummulation(DmInlet,DmGas,DmLiquid);
-            tank.excitation();
-            tank.potentialAccummulation(hInlet,DmInlet,DmGas,DmLiquid);
+            tank.massAccummulation(DmInlet,DmOutlet);
+            tank.excitation(hInlet,DmInlet,DmOutlet,DQ);
+            tank.potentialAccummulation();
             Dx = [tank.Dp; tank.Dh; tank.Dd];
         end
         function initialize(tank,p,h,Volume,ODEoptions)
