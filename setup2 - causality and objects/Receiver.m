@@ -34,7 +34,7 @@ classdef Receiver   < Tank
             rec.massAccummulation(DmInlet,DmGas+DmLiquid);
             rec.separation();
             rec.excitation([hInlet; rec.hGas; rec.hLiquid],...
-                [DmInlet; -DmGas; -DmLiquid],[],[]);
+                [DmInlet; -DmGas; -DmLiquid],[],0);
             rec.potentialAccummulation();
             Dx = [rec.Dp; rec.Dh; rec.Dd];
         end
