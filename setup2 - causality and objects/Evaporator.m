@@ -17,9 +17,9 @@ classdef Evaporator < Tank
             ev.h = x(2,1);
             ev.d = x(3,1);
             % Inputs
-            DQ = Inputs.DQ;
-            DmOutlet = Inputs.DmOutlet;
-            hInlet = Inputs.hInlet;
+%             DQ = Inputs.DQ;
+%             DmOutlet = Inputs.DmOutlet;
+%             hInlet = Inputs.hInlet;
             % Process
             ev.boundaryCondition(DQ,hInlet);
             ev.massAccummulation(ev.DmInlet,DmOutlet);

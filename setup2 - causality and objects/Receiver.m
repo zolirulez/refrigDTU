@@ -1,20 +1,22 @@
 classdef Receiver   < Tank
     properties
         % Outlet states
-        hGas
-        hLiquid
-        dGas
-        dLiquid
+        gas         % Structure with fields p,h,d,DmOutlet
+        liquid      % Structure with fields p,h,d,DmOutlet
+        DmInlet
+        hInlet
     end
     methods
         function separation(rec)
-            rec.hGas = CoolProp.PropsSI('H','P',rec.p,'Q',1,'CO2');
-            rec.hLiquid = CoolProp.PropsSI('H','P',rec.p,'Q',0,'CO2');
-            rec.dGas = CoolProp.PropsSI('D','P',rec.p,'H',rec.hGas,'CO2');
-            rec.dLiquid = CoolProp.PropsSI('D','P',rec.p,'H',rec.hLiquid,'CO2');
-            if rec.hGas < rec.h
+            rec.gas.h = CoolProp.PropsSI('H','P',rec.p,'Q',1,'CO2');
+            rec.liquid.h = CoolProp.PropsSI('H','P',rec.p,'Q',0,'CO2');
+            rec.gas.d = CoolProp.PropsSI('D','P',rec.p,'H',rec.gas.h,'CO2');
+            rec.liquid.d = CoolProp.PropsSI('D','P',rec.p,'H',rec.liquid.h,'CO2');
+            rec.gas.p = rec.p;
+            rec.liquid.p = rec.p;
+            if rec.gas.h < rec.h
                 disp('Error: receiver is empty of liquid')
-            elseif rec.hLiquid > rec.h
+            elseif rec.liquid.h > rec.h
                 disp('Error: receiver is full of liquid')
             end
         end
@@ -26,15 +28,15 @@ classdef Receiver   < Tank
             rec.h = x(2,1);
             rec.d = x(3,1);
             % Inputs
-            DmInlet = Inputs.DmInlet;
-            DmLiquid = Inputs.DmLiquid;
-            DmGas = Inputs.DmGas;
-            hInlet = Inputs.hInlet;
+%             DmInlet = Inputs.DmInlet;
+%             DmLiquid = Inputs.DmLiquid;
+%             DmGas = Inputs.DmGas;
+%             hInlet = Inputs.hInlet;
             % Process
             rec.massAccummulation(DmInlet,DmGas+DmLiquid);
             rec.separation();
-            rec.excitation([hInlet; rec.hGas; rec.hLiquid],...
-                [DmInlet; -DmGas; -DmLiquid],[],0);
+            rec.excitation([hInlet; rec.gas.h; rec.liquid.h],...
+                [DmInlet; -gas.DmOutlet; -liquid.DmOutlet],[],0);
             rec.potentialAccummulation();
             Dx = [rec.Dp; rec.Dh; rec.Dd];
         end

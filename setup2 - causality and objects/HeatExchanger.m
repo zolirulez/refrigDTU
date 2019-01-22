@@ -25,21 +25,25 @@ classdef HeatExchanger < matlab.mixin.Copyable
         % Partial derivatives
         Dd_Dh
         Dd_Dp
+        % Boundaries
+        DmInlet
+        DmOutlet
+        hInlet
     end
     methods
-        function massflow(hx,DmInlet,DmOutlet)
+        function massflow(hx)
             deltap = hx.p(1:end-1)-hx.p(2:end);
             inducedDm = sign(deltap).*...
                 sqrt(abs(deltap.*hx.d(1:end-1)))... 
                 /hx.OneTubeCellResistance;
-            hx.Dm  = [DmInlet/hx.nParallelFlows; inducedDm;...
-                DmOutlet/hx.nParallelFlows];
+            hx.Dm  = [hx.DmInlet/hx.nParallelFlows; inducedDm;...
+                hx.DmOutlet/hx.nParallelFlows];
         end
         function massAccummulation(hx)
             hx.Dd = -diff(hx.Dm)/hx.OneTubeCellVolume;
         end
-        function potentialAccummulation(hx,hInlet,DQ)
-            Dpsi = (-diff(hx.Dm .*[hInlet; hx.h(1:end)]) + DQ)/hx.OneTubeCellVolume;
+        function potentialAccummulation(hx,DQ)
+            Dpsi = (-diff(hx.Dm .*[hx.hInlet; hx.h(1:end)]) + DQ)/hx.OneTubeCellVolume;
             DpDh_vector = zeros(2,hx.nCell);
             for it = 1:hx.nCell
                 try
@@ -82,10 +86,10 @@ classdef HeatExchanger < matlab.mixin.Copyable
             hx.h = x(hx.nCell+1:2*hx.nCell,1);
             hx.d = x(2*hx.nCell+1:3*hx.nCell,1);
             % Inputs
-            DmInlet = inputs.DmInlet;
-            DmOutlet = inputs.DmOutlet;
-            hInlet = inputs.hInlet;
-            DQ = inputs.DQ;
+%             DmInlet = inputs.DmInlet;
+%             DmOutlet = inputs.DmOutlet;
+%             hInlet = inputs.hInlet;
+%             DQ = inputs.DQ;
             % Process
             massflow(hx,DmInlet,DmOutlet);
             massAccummulation(hx);
