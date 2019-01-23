@@ -21,7 +21,7 @@ classdef Valve < matlab.mixin.Copyable
       function enthalpy(valve,hInlet)
           valve.h = hInlet;
       end
-      function DDm = process(valve,t,x,Inputs)
+      function DDm = process(valve,t,x,capacityRatio)
           % Inputs
 %           dInlet = Inputs.dInlet;
 %           pInlet = Inputs.pInlet;
@@ -31,8 +31,8 @@ classdef Valve < matlab.mixin.Copyable
           % State
           valve.Dm = x;
           % Process
-          valve.flow(capacityRatio,dInlet,pInlet,pOutlet);
-          valve.enthalpy(hInlet);
+          valve.flow(capacityRatio,valve.dInlet,valve.pInlet,valve.pOutlet);
+          valve.enthalpy(valve.hInlet);
           % Derivatives
           DDm = valve.DDm;
       end

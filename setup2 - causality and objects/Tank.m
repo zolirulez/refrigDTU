@@ -61,10 +61,10 @@ classdef Tank < matlab.mixin.Copyable
             tank.h = x(2,1);
             tank.d = x(3,1);
             % Inputs
-%             DmInlet = Inputs.DmInlet;
-%             DmOutlet = Inputs.DmOutlet;
-%             hInlet = Inputs.hInlet;
-%             DQ = Inputs.DQ;
+            DmInlet = Inputs.DmInlet;
+            DmOutlet = Inputs.DmOutlet;
+            hInlet = Inputs.hInlet;
+            DQ = Inputs.DQ;
             % Process
             tank.massAccummulation(DmInlet,DmOutlet);
             tank.excitation(hInlet,DmInlet,DmOutlet,DQ);

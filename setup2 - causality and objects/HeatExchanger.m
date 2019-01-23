@@ -78,7 +78,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
             hx.d = x(end,2*hx.nCell+1:3*hx.nCell)';
             %hx.pState = x(end,3*hx.nCell+1:4*hx.nCell)';
         end
-        function Dx = process(hx,t,x,inputs)
+        function Dx = process(hx,t,x,DQ)
             % Time
             hx.t = t;
             % States
@@ -91,9 +91,9 @@ classdef HeatExchanger < matlab.mixin.Copyable
 %             hInlet = inputs.hInlet;
 %             DQ = inputs.DQ;
             % Process
-            massflow(hx,DmInlet,DmOutlet);
+            massflow(hx);
             massAccummulation(hx);
-            potentialAccummulation(hx,hInlet,DQ);
+            potentialAccummulation(hx,DQ);
             Dx = [hx.Dp; hx.Dh; hx.Dd];%
         end
         function initialize(hx,nCell,p,h,Parameters,ODEoptions)

@@ -20,7 +20,7 @@ classdef Receiver   < Tank
                 disp('Error: receiver is full of liquid')
             end
         end
-        function Dx = process(rec,t,x,Inputs)
+        function Dx = process(rec,t,x)
             % Time
             rec.t = t;
             % States
@@ -33,10 +33,10 @@ classdef Receiver   < Tank
 %             DmGas = Inputs.DmGas;
 %             hInlet = Inputs.hInlet;
             % Process
-            rec.massAccummulation(DmInlet,DmGas+DmLiquid);
+            rec.massAccummulation(rec.DmInlet,rec.gas.DmOutlet+rec.liquid.DmOutlet);
             rec.separation();
-            rec.excitation([hInlet; rec.gas.h; rec.liquid.h],...
-                [DmInlet; -gas.DmOutlet; -liquid.DmOutlet],[],0);
+            rec.excitation([rec.hInlet; rec.gas.h; rec.liquid.h],...
+                [rec.DmInlet; -rec.gas.DmOutlet; -rec.liquid.DmOutlet],[],0);
             rec.potentialAccummulation();
             Dx = [rec.Dp; rec.Dh; rec.Dd];
         end

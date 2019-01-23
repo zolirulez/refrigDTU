@@ -3,13 +3,17 @@ classdef Evaporator < Tank
         % Parameters
         hOutlet
         DmInlet
+        DmOutlet
+        hInlet
     end
     methods
         function boundaryCondition(ev,DQ,hInlet)
             % Valve operation for necessary heat transfer (no dynamics)
             ev.DmInlet = -DQ/(hInlet - ev.hOutlet);
+            ev.DmOutlet = ev.DmInlet;
+            ev.Dm = ev.DmInlet;
         end
-        function Dx = process(ev,t,x,Inputs)
+        function Dx = process(ev,t,x,DQ)
             % Time
             ev.t = t;
             % States
@@ -21,9 +25,9 @@ classdef Evaporator < Tank
 %             DmOutlet = Inputs.DmOutlet;
 %             hInlet = Inputs.hInlet;
             % Process
-            ev.boundaryCondition(DQ,hInlet);
-            ev.massAccummulation(ev.DmInlet,DmOutlet);
-            ev.excitation([hInlet; ev.hOutlet],[ev.DmInlet; -DmOutlet],[],DQ);
+            ev.boundaryCondition(DQ,ev.hInlet);
+            ev.massAccummulation(ev.DmInlet,ev.DmOutlet);
+            ev.excitation([ev.hInlet; ev.hOutlet],[ev.DmInlet; -ev.DmOutlet],[],DQ);
             ev.potentialAccummulation();
             Dx = [ev.Dp; ev.Dh; ev.Dd];
         end

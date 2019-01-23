@@ -8,12 +8,13 @@ classdef Compressor   < matlab.mixin.Copyable
       h
       Tau
       pInlet
+      dInlet
       pOutlet
       hInlet
    end
    methods
       function flow(comp,frequency,dInlet)
-         Dm = 2*pi*frequency*dInlet*comp.Volume;
+         Dm = 2*pi*50*frequency*dInlet*comp.Volume;
          comp.DDm = (Dm - comp.Dm)/comp.Tau;
       end
       function enthalpy(comp,pInlet,pOutlet,hInlet)
@@ -21,7 +22,7 @@ classdef Compressor   < matlab.mixin.Copyable
          hIdeal = CoolProp.PropsSI('H','S',s,'P',pOutlet,'CO2');
          comp.h = (hIdeal - hInlet)/comp.IsentropicEfficiency + hInlet;
       end
-      function DDm = process(comp,t,x,Inputs)
+      function DDm = process(comp,t,x,frequency)
           % Inputs
 %           dInlet = Inputs.dInlet;
 %           pInlet = Inputs.pInlet;
@@ -31,8 +32,8 @@ classdef Compressor   < matlab.mixin.Copyable
           % State
           comp.Dm = x;
           % Process
-          comp.flow(frequency,dInlet);
-          comp.enthalpy(pInlet,pOutlet,hInlet);
+          comp.flow(frequency,comp.dInlet);
+          comp.enthalpy(comp.pInlet,comp.pOutlet,comp.hInlet);
           % Derivatives
           DDm = comp.DDm;
       end
