@@ -5,6 +5,7 @@ classdef Receiver   < Tank
         liquid      % Structure with fields p,h,d,DmOutlet
         DmInlet
         hInlet
+        DmOutlet
     end
     methods
         function separation(rec)
@@ -28,15 +29,12 @@ classdef Receiver   < Tank
             rec.h = x(2,1);
             rec.d = x(3,1);
             % Inputs
-%             DmInlet = Inputs.DmInlet;
-%             DmLiquid = Inputs.DmLiquid;
-%             DmGas = Inputs.DmGas;
-%             hInlet = Inputs.hInlet;
+            rec.DmOutlet = rec.gas.DmOutlet + rec.liquid.DmOutlet;
             % Process
-            rec.massAccummulation(rec.DmInlet,rec.gas.DmOutlet+rec.liquid.DmOutlet);
+            rec.massAccummulation();
             rec.separation();
-            rec.excitation([rec.hInlet; rec.gas.h; rec.liquid.h],...
-                [rec.DmInlet; -rec.gas.DmOutlet; -rec.liquid.DmOutlet],[],0);
+            rec.excitation([rec.DmInlet; -rec.gas.DmOutlet; -rec.liquid.DmOutlet],...
+                [rec.hInlet; rec.gas.h; rec.liquid.h],0);
             rec.potentialAccummulation();
             Dx = [rec.Dp; rec.Dh; rec.Dd];
         end

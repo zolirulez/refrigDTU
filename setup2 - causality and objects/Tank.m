@@ -19,12 +19,11 @@ classdef Tank < matlab.mixin.Copyable
         Dd_Dp
     end
     methods
-        function massAccummulation(tank,DmInlet,DmOutlet)
-            tank.Dd = (DmInlet - DmOutlet)/tank.Volume;
+        function massAccummulation(tank)
+            tank.Dd = (tank.DmInlet - tank.DmOutlet)/tank.Volume;
         end
-        function excitation(tank,hInlet,DmInlet,DmOutlet,DQ)
-            tank.Dpsi = ([DmInlet' -DmOutlet']*...
-                [hInlet; tank.h*ones(size(DmOutlet))] + DQ)/tank.Volume;
+        function excitation(tank,Dm,h,DQ)
+            tank.Dpsi = (Dm'*h + DQ)/tank.Volume;
         end
         function potentialAccummulation(tank)
             try
@@ -53,21 +52,17 @@ classdef Tank < matlab.mixin.Copyable
             tank.h = x(end,2)';
             tank.d = x(end,3)';
         end
-        function Dx = process(tank,t,x,Inputs)
+        function Dx = process(tank,t,x,DQ)
             % Time
             tank.t = t;
             % States
             tank.p = x(1,1);
             tank.h = x(2,1);
             tank.d = x(3,1);
-            % Inputs
-            DmInlet = Inputs.DmInlet;
-            DmOutlet = Inputs.DmOutlet;
-            hInlet = Inputs.hInlet;
-            DQ = Inputs.DQ;
             % Process
-            tank.massAccummulation(DmInlet,DmOutlet);
-            tank.excitation(hInlet,DmInlet,DmOutlet,DQ);
+            tank.massAccummulation();
+            tank.excitation([tank.DmInlet; -tank.DmOutlet],...
+                [tank.hInlet; tank.h*ones(size(tank.DmOutlet))],DQ);
             tank.potentialAccummulation();
             Dx = [tank.Dp; tank.Dh; tank.Dd];
         end
