@@ -33,7 +33,8 @@ classdef Valve < matlab.mixin.Copyable
       function initialize(valve,Kv,Tau,Initial)
           valve.Kv = Kv;
           valve.tau = Tau;
-          valve.Dm = Initial;
+          valve.Dm = Initial.Dm;
+          valve.h = Initial.h;
           % Record
           Record.t = [];
           Record.x = [];

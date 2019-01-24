@@ -35,7 +35,8 @@ classdef Compressor   < matlab.mixin.Copyable
           comp.IsentropicEfficiency = IsentropicEfficiency;
           comp.Volume = Volume;
           comp.Tau = Tau;
-          comp.Dm = Initial;
+          comp.Dm = Initial.Dm;
+          comp.h = Initial.h;
           % Record
           Record.t = [];
           Record.x = [];

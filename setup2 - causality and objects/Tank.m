@@ -3,7 +3,6 @@ classdef Tank < matlab.mixin.Copyable
         % Parameters
         Volume      % Total VLE volume 
         % Variables
-        Dm                      % Mass flow rate
         p                       % Pressure
         h                       % Enthalpy
         d                       % Density

@@ -18,15 +18,11 @@ Dm = 0.321;
 % HP Valve initialization
 HPValve = Valve;
 Kv = 0.8;
-HPValve.initialize(Kv,Tau,Dm);
+Initial.Dm = Dm;
+Initial.h = 300e3;
+HPValve.initialize(Kv,Tau,Initial);
 HPValve.hInlet = gc.h(end);
-HPValve.enthalpy();
-
 % Gas Cooler input initialization
-% Inputs.gcInputs.hInlet = h(1);
-% Inputs.gcInputs.hInlet = 525e3;
-% Inputs.gcInputs.DQ = -ones(nCell,1)*Dm*(Inputs.gcInputs.hInlet-h(2))/nCell/Parameters.nParallelFlows;
-% Inputs.gcInputs.DmInlet = Dm;
 Inputs.gcDQ = -ones(nCell,1)*Dm*(525e3-300e3)/nCell/Parameters.nParallelFlows;
 % Receiver initialization
 recVolume = 0.133;
@@ -36,15 +32,13 @@ hRec = 250e3;
 DmGas = 0.126;
 rec.initialize(pRec,hRec,recVolume,ODEoptions);
 rec.separation(); % For the receiver valve
-% Inputs.recInputs.hInlet = gc.h(end);
-% Inputs.recInputs.DmInlet = Dm;
-% Inputs.recInputs.DmGas = DmGas;
-% Inputs.recInputs.DmLiquid = Inputs.recInputs.DmInlet - Inputs.recInputs.DmGas;
 rec.liquid.DmOutlet = Dm - DmGas;
 % Receiver Valve initialization
 recValve = Valve;
 Kv = 2;
-recValve.initialize(Kv,Tau,DmGas);
+Initial.Dm = DmGas/5;
+Initial.h = 440e3;
+recValve.initialize(Kv,Tau,Initial);
 recValve.h = rec.gas.h;
 % Joint initialization
 MTJoint = Joint;
@@ -53,21 +47,21 @@ RecJoint = Joint;
 cooler = Evaporator;
 coolerVolume = givenVolume*5;
 pCooler = 30e5;
-hCooler = 400e3;
-hOutlet = 440e3;
-cooler.initialize(pCooler,hCooler,hOutlet,coolerVolume,ODEoptions);
+hOutletVirtual = 440e3;
+hCooler = hOutletVirtual;
+cooler.initialize(pCooler,hCooler,hOutletVirtual,coolerVolume,ODEoptions);
 % Inputs.coolerInputs.DmOutlet = 0.151;
 % Inputs.coolerInputs.DQ = 36e3;
 % Inputs.coolerInputs.hInlet = 195e3;
 Inputs.coolerDQ = 36e3;
 cooler.DmInlet = 0.151;
-cooler.Dm = cooler.DmInlet;
 % Compressor initialization
 comp = Compressor;
 IsentropicEfficiency = 0.65;
 compDensity = CoolProp.PropsSI('D','H',450e3,'P',30e5,'CO2');
 Displacement = Dm/compDensity/20; % TODO
-Initial = Dm;
+Initial.Dm = Dm;
+Initial.h = 525e3;
 Tau = 1;
 comp.initialize(IsentropicEfficiency,Displacement,Tau,Initial);
 comp.hInlet = 450e3;
@@ -92,7 +86,7 @@ K = 10^-6.5;
 Ti = 50;
 PIrecValve.initialize(K,Ti,initInt,mn,mx,neg,timestep);
 mx = 5;
-K = 1e2;
+K = 1e-7;
 Ti = 100;
 PIcomp.initialize(K,Ti,initInt,mn,mx,neg,timestep);
 
@@ -121,7 +115,7 @@ pp.initialize(Parts,Process,PostProcess,Initial,ODEoptions);
 pp.initialInputs(Inputs);
 
 % Simulation
-itmax = 2;
+itmax = 5;
 tic
 for it = 1:itmax
     % Controller
@@ -199,28 +193,23 @@ function Dx = process(t,x,pp)
     cooler.d = xCooler(3);
     comp.Dm = xComp;
     % Static equations
-    comp.enthalpy();
     MTJoint.noAccummulation(cooler.p,...
-        [recValve.Dm; 0.046],[recValve.h; 530e3],-comp.Dm,cooler.hOutlet);
-    RecJoint.noAccummulation(cooler.p,...
+        [recValve.Dm; 0.046],[recValve.h; 530e3],-comp.Dm,cooler.h);
+    RecJoint.noAccummulation(rec.p,...
         -0.046,rec.liquid.h,-cooler.DmInlet,rec.liquid.h);
-    recValve.enthalpy();
-    rec.separation();
-    HPValve.enthalpy();
     % Connections 
-    connect.inlet(comp,gc,{'p','h','d'});
+    connect.inlet(comp,MTJoint,{'p','h','d'});
     connect.outlet(comp,gc,{'p'});
     connect.outlet(recValve,MTJoint,{'p'});
     connect.inlet(recValve,rec.gas,{'p','h','d'});
     connect.outlet(rec,recValve,{'Dm'},'gas');
     connect.inlet(rec,HPValve,{'Dm','h'});
+    connect.outlet(rec,RecJoint,{'Dm'},'liquid');
     connect.outlet(HPValve,rec,{'p'});
     connect.inlet(HPValve,gc,{'p','h','d'});
     connect.inlet(gc,comp,{'Dm','h'});
     connect.outlet(gc,HPValve,{'Dm'});
-    connect.inlet(cooler,rec.liquid,{'h'});
     connect.outlet(cooler,MTJoint,{'Dm'});
-    connect.outlet(rec,RecJoint,{'Dm'},'liquid');
     connect.inlet(cooler,RecJoint,{'h'});
     % Cooler
     DCooler = cooler.process(t,xCooler,coolerDQ);
