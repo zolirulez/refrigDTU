@@ -23,7 +23,7 @@ classdef Evaporator < Tank
             % Process
             ev.boundaryCondition(DQ);
             ev.massAccummulation();
-            ev.excitation([ev.DmInlet; -ev.DmOutlet],[ev.hInlet; ev.hOutlet],DQ);
+            ev.excitation([ev.DmInlet; -ev.DmOutlet],[ev.hInlet; ev.hOutlet],0);
             ev.potentialAccummulation();
             Dx = [ev.Dp; ev.Dh; ev.Dd];
         end
