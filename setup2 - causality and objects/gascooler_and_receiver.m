@@ -7,29 +7,34 @@ Parameters.InnerTubeDiameter = 0.007;
 Parameters.nParallelFlows = 10;
 Parameters.OneTubelength = givenVolume/(Parameters.InnerTubeDiameter^2*pi/4);
 Parameters.f1 = 0.001; % In case of just a few cells, sensitivity is pretty low
+Parameters.Qnominal = 74300;
+Parameters.Tpi = 273+107;
+Parameters.Tpo = 273+33;
+Parameters.Tsi = 273+30;
+Parameters.Tso = 273+40;
 gc = HeatExchanger;
-p = [86e5 84e5];
-h = [350e3 298e3];
+p = [85.5e5 85e5];
+h = [450e3 298e3];
 Tau = 0.1;
 ODEoptions = [];
 nCell = 2;
-gc.initialize(nCell,p,h,Parameters,ODEoptions)
-Dm = 0.321;
+gc.initialize(nCell,p,h,Parameters)
 % HP Valve initialization
 HPValve = Valve;
 Kv = 0.8;
+Dm = 0.321;
 Initial.Dm = Dm;
 Initial.h = 300e3;
 HPValve.initialize(Kv,Tau,Initial);
 HPValve.hInlet = gc.h(end);
-Inputs.gcDQ = -ones(nCell,1)*Dm*(525e3-300e3)/nCell/Parameters.nParallelFlows;
+Inputs.gcTa = 273+[40; 37];
 % Receiver initialization
 recVolume = 0.133;
 rec = Receiver;
 pRec = 38e5;
 hRec = 300e3;
 DmGas = 0.126;
-rec.initialize(pRec,hRec,recVolume,ODEoptions);
+rec.initialize(pRec,hRec,recVolume);
 rec.separation(); % For the receiver valve
 rec.liquid.DmOutlet = Dm - DmGas;
 % Receiver Valve initialization
@@ -38,17 +43,17 @@ Kv = 2;
 Initial.Dm = DmGas;
 Initial.h = 440e3;
 recValve.initialize(Kv,Tau,Initial);
-recValve.h = rec.gas.h;
+recValve.hInlet = rec.gas.h;
 % Joint initialization
 MTJoint = Joint;
 RecJoint = Joint;
 % Cooler initialization
 cooler = Evaporator;
-coolerVolume = givenVolume*5;
+coolerVolume = givenVolume*2;
 pCooler = 30e5;
 hOutletVirtual = 440e3;
 hCooler = hOutletVirtual;
-cooler.initialize(pCooler,hCooler,hOutletVirtual,coolerVolume,ODEoptions);
+cooler.initialize(pCooler,hCooler,hOutletVirtual,coolerVolume);
 Inputs.coolerDQ = 36e3;
 cooler.DmInlet = 0.151;
 % Compressor initialization
@@ -67,7 +72,7 @@ comp.pOutlet = 85e5;
 PIHPValve = PIController;
 PIrecValve = PIController;
 PIcomp = PIController;
-K = 1e-6;
+K = 1e-5;
 Ti = 50;
 mn = 0;
 mx = 1;
@@ -83,8 +88,8 @@ Ti = 50;
 initInt = 0.25;
 PIrecValve.initialize(K,Ti,initInt,mn,mx,neg,timestep);
 mx = 5;
-K = 1e-7;
-Ti = 50;
+K = 1e-8;
+Ti = 20;
 initInt = 0.1;
 PIcomp.initialize(K,Ti,initInt,mn,mx,neg,timestep);
 
@@ -166,7 +171,7 @@ function Dx = process(t,x,pp)
     RecJoint = pp.parts.RecJoint;
     connect = pp.parts.connect;
     % Disturbances
-    gcDQ = pp.Inputs.gcDQ;
+    gcTa = pp.Inputs.gcTa;
     coolerDQ = pp.Inputs.coolerDQ;
     recValveCR = pp.Inputs.recValveCR;
     HPValveCR = pp.Inputs.HPValveCR;
@@ -190,7 +195,11 @@ function Dx = process(t,x,pp)
     cooler.h = xCooler(2);
     cooler.d = xCooler(3);
     comp.Dm = xComp;
-    % Static equations
+    % Static equations SHOULD BE IN/OUTSIDE? TODO
+    rec.separation;
+    comp.enthalpy;
+    HPValve.enthalpy;
+    recValve.enthalpy;
     MTJoint.noAccummulation(cooler.p,...
         [recValve.Dm; 0.046],[recValve.h; 530e3],-comp.Dm,cooler.h);
     RecJoint.noAccummulation(rec.p,...
@@ -220,7 +229,7 @@ function Dx = process(t,x,pp)
     % HP Valve
     DHPValve = HPValve.process(t,xHPValve,HPValveCR);
     % Gas cooler
-    DGC = gc.process(t,xGC,gcDQ);
+    DGC = gc.process(t,xGC,gcTa);
     % Derivative
     Dx = [DGC; DHPValve; DRec; DRecValve; DCooler; DComp];
 end

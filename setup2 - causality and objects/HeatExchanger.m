@@ -29,6 +29,12 @@ classdef HeatExchanger < matlab.mixin.Copyable
         DmInlet
         DmOutlet
         hInlet
+        % Heat Exchange
+        T
+        ThermalResistance
+        OneCellThermalResistance
+        Qnominal
+        dTlog
     end
     methods
         function massflow(hx)
@@ -42,20 +48,29 @@ classdef HeatExchanger < matlab.mixin.Copyable
         function massAccummulation(hx)
             hx.Dd = -diff(hx.Dm)/hx.OneTubeCellVolume;
         end
-        function potentialAccummulation(hx,DQ)
-            Dpsi = (-diff(hx.Dm .*[hx.hInlet; hx.h(1:end)]) + DQ)/hx.OneTubeCellVolume;
-            DpDh_vector = zeros(2,hx.nCell);
-            for it = 1:hx.nCell
+        function potentialAccummulation(hx,Ta)
+             for it = 1:hx.nCell
                 try
-                    Dd_Dp = CoolProp.PropsSI('d(D)/d(P)|H','H',hx.h(it),'P',hx.p(it),'CO2');
-                    Dd_Dh = CoolProp.PropsSI('d(D)/d(H)|P','H',hx.h(it),'P',hx.p(it),'CO2');
-                    %Dd_Dp = 0.25e-4;
-                    hx.Dd_Dp = Dd_Dp;
-                    hx.Dd_Dh = Dd_Dh;
-                    global partials
-                    partials = [partials [Dd_Dp; Dd_Dh]];
+                    hx.ph2T;
                 catch
                     global bugnumber
+                    bugnumber = bugnumber+1;
+                end
+             end
+             DQ = (Ta - hx.T)/hx.OneCellThermalResistance;
+             Dpsi = (-diff(hx.Dm .*[hx.hInlet; hx.h(1:end)]) + DQ)/hx.OneTubeCellVolume;
+             DpDh_vector = zeros(2,hx.nCell);
+             for it = 1:hx.nCell
+                 try
+                     Dd_Dp = CoolProp.PropsSI('d(D)/d(P)|H','H',hx.h(it),'P',hx.p(it),'CO2');
+                     Dd_Dh = CoolProp.PropsSI('d(D)/d(H)|P','H',hx.h(it),'P',hx.p(it),'CO2');
+                     %Dd_Dp = 0.25e-4;
+                     hx.Dd_Dp = Dd_Dp;
+                     hx.Dd_Dh = Dd_Dh;
+                     global partials
+                     partials = [partials [Dd_Dp; Dd_Dh]];
+                 catch
+                     global bugnumber
                     bugnumber = bugnumber+1;
                 end
                 DpDh_vector(:,it) = [-1 hx.d(it); hx.Dd_Dp hx.Dd_Dh]\...
@@ -78,29 +93,25 @@ classdef HeatExchanger < matlab.mixin.Copyable
             hx.d = x(end,2*hx.nCell+1:3*hx.nCell)';
             %hx.pState = x(end,3*hx.nCell+1:4*hx.nCell)';
         end
-        function Dx = process(hx,t,x,DQ)
+        function Dx = process(hx,t,x,Ta)
             % Time
             hx.t = t;
             % States
             hx.p = x(1:hx.nCell,1);
             hx.h = x(hx.nCell+1:2*hx.nCell,1);
             hx.d = x(2*hx.nCell+1:3*hx.nCell,1);
-            % Inputs
-%             DmInlet = inputs.DmInlet;
-%             DmOutlet = inputs.DmOutlet;
-%             hInlet = inputs.hInlet;
-%             DQ = inputs.DQ;
             % Process
             massflow(hx);
             massAccummulation(hx);
-            potentialAccummulation(hx,DQ);
-            Dx = [hx.Dp; hx.Dh; hx.Dd];%
+            potentialAccummulation(hx,Ta);
+            Dx = [hx.Dp; hx.Dh; hx.Dd];
         end
-        function initialize(hx,nCell,p,h,Parameters,ODEoptions)
+        function initialize(hx,nCell,p,h,Parameters)
             % Function help: provide two-element vectors for pressure and 
             %   enthalpy inlets and outlets, and provide volume.
 
             hx.nCell = nCell;
+            % Resistance
             hx.InnerTubeDiameter = Parameters.InnerTubeDiameter;
             hx.OneTubeLength = Parameters.OneTubelength;
             hx.nParallelFlows = Parameters.nParallelFlows;
@@ -109,11 +120,20 @@ classdef HeatExchanger < matlab.mixin.Copyable
                 hx.InnerTubeDiameter^2*pi/4*hx.OneTubeLength;
             hx.OneTubeTotalResistance = sqrt(16*hx.f1*hx.OneTubeLength/...
                 (pi^2*hx.InnerTubeDiameter^5));
-            hx.discretize();
+            % States
             hx.p = linspace(p(1),p(2),nCell)';
             hx.h = linspace(h(1),h(2),nCell)';
             hx.ph2d;
-            hx.ODEoptions = ODEoptions;
+            hx.ph2T;
+            % Thermal properties
+            hx.Qnominal = Parameters.Qnominal;
+            dTi = Parameters.Tpi - Parameters.Tso;
+            dTo = Parameters.Tpo - Parameters.Tsi;
+            hx.dTlog = (dTo - dTi)/log(dTo/dTi); 
+            hx.ThermalResistance = hx.dTlog/hx.Qnominal;
+            % Discretizing
+            hx.discretize();
+            % Simulation
             Record.t = [];
             Record.x = [];
             hx.record = Record;
@@ -122,12 +142,14 @@ classdef HeatExchanger < matlab.mixin.Copyable
             hx.p = linspace(p(1),p(2),hx.nCell)';
             hx.h = linspace(h(1),h(2),hx.nCell)';
             hx.ph2d;
+            hx.ph2T;
             hx.record.t = [];
             hx.record.x = [];
         end
         function discretize(hx)
             hx.OneTubeCellVolume = hx.OneTubeTotalVolume/hx.nCell;
             hx.OneTubeCellResistance = sqrt(hx.OneTubeTotalResistance^2/hx.nCell);
+            hx.OneCellThermalResistance = hx.ThermalResistance*hx.nCell;
         end
         function ph2d(hx)
             hx.d = zeros(hx.nCell,1);
@@ -139,6 +161,12 @@ classdef HeatExchanger < matlab.mixin.Copyable
             hx.p = zeros(hx.nCell,1);
             for it = 1:hx.nCell
                 hx.p(it) = CoolProp.PropsSI('P','D',hx.d(it),'H',hx.h(it),'CO2');
+            end
+        end
+        function ph2T(hx)
+            hx.T = zeros(hx.nCell,1);
+            for it = 1:hx.nCell
+                hx.T(it) = CoolProp.PropsSI('T','P',hx.p(it),'H',hx.h(it),'CO2');
             end
         end
     end

@@ -65,7 +65,7 @@ classdef Tank < matlab.mixin.Copyable
             tank.potentialAccummulation();
             Dx = [tank.Dp; tank.Dh; tank.Dd];
         end
-        function initialize(tank,p,h,Volume,ODEoptions)
+        function initialize(tank,p,h,Volume)
             % Function help: provide initial pressure, enthalpy, and the
             %   volume
 
@@ -73,7 +73,6 @@ classdef Tank < matlab.mixin.Copyable
             tank.p = p;
             tank.h = h;
             tank.ph2d;
-            tank.ODEoptions = ODEoptions;
             Record.t = [];
             Record.x = [];
             tank.record = Record;

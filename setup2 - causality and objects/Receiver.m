@@ -32,17 +32,17 @@ classdef Receiver   < Tank
             rec.DmOutlet = rec.gas.DmOutlet + rec.liquid.DmOutlet;
             % Process
             rec.massAccummulation();
-            rec.separation();
+            %rec.separation();
             rec.excitation([rec.DmInlet; -rec.gas.DmOutlet; -rec.liquid.DmOutlet],...
                 [rec.hInlet; rec.gas.h; rec.liquid.h],0);
             rec.potentialAccummulation();
             Dx = [rec.Dp; rec.Dh; rec.Dd];
         end
-        function initialize(rec,p,h,Volume,ODEoptions)
+        function initialize(rec,p,h,Volume)
             % Function help: provide initial pressure, enthalpy, and the
             %   volume, and calculates separations
 
-            initialize@Tank(rec,p,h,Volume,ODEoptions);
+            initialize@Tank(rec,p,h,Volume);
             rec.separation();
         end
     end

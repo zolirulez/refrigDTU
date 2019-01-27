@@ -25,11 +25,11 @@ classdef Evaporator < Tank
             ev.potentialAccummulation();
             Dx = [ev.Dp; ev.Dh; ev.Dd];
         end
-        function initialize(ev,p,h,hOutletVirtual,Volume,ODEoptions)
+        function initialize(ev,p,h,hOutletVirtual,Volume)
             % Function help: provide initial pressure, enthalpy, and the
             %   volume
 
-            initialize@Tank(ev,p,h,Volume,ODEoptions);
+            initialize@Tank(ev,p,h,Volume);
             ev.hOutletVirtual = hOutletVirtual;
         end
     end

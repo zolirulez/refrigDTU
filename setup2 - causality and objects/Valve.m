@@ -26,7 +26,7 @@ classdef Valve < matlab.mixin.Copyable
           valve.Dm = x;
           % Process
           valve.flow(capacityRatio);
-          valve.enthalpy();
+          %valve.enthalpy();
           % Derivatives
           DDm = valve.DDm;
       end

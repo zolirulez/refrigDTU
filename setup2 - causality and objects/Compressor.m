@@ -27,7 +27,7 @@ classdef Compressor   < matlab.mixin.Copyable
           comp.Dm = x;
           % Process
           comp.flow(frequency);
-          comp.enthalpy();
+          %comp.enthalpy();
           % Derivatives
           DDm = comp.DDm;
       end
