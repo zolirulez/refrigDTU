@@ -8,7 +8,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
         nParallelFlows          % Number of parallel flows
         f1                      % Friction factor
         OneTubeTotalResistance  % Total resistance of one tube
-        OneTubeCellResistance   % Resistance of one piece of one tube
+        OneCellResistance       % Resistance of one piece of n parallel tubes
         % Discretization parameter
         nCell
         % Variables
@@ -35,15 +35,14 @@ classdef HeatExchanger < matlab.mixin.Copyable
         OneCellThermalResistance
         Qnominal
         dTlog
+        DQ
     end
     methods
         function massflow(hx)
             deltap = hx.p(1:end-1)-hx.p(2:end);
             inducedDm = sign(deltap).*...
-                sqrt(abs(deltap.*hx.d(1:end-1)))... 
-                /hx.OneTubeCellResistance;
-            hx.Dm  = [hx.DmInlet/hx.nParallelFlows; inducedDm;...
-                hx.DmOutlet/hx.nParallelFlows];
+                sqrt(abs(deltap.*hx.d(1:end-1)))/hx.OneCellResistance;
+            hx.Dm  = [hx.DmInlet; inducedDm; hx.DmOutlet];
         end
         function massAccummulation(hx)
             hx.Dd = -diff(hx.Dm)/hx.OneTubeCellVolume;
@@ -57,8 +56,8 @@ classdef HeatExchanger < matlab.mixin.Copyable
                     bugnumber = bugnumber+1;
                 end
              end
-             DQ = (Ta - hx.T)/hx.OneCellThermalResistance;
-             Dpsi = (-diff(hx.Dm .*[hx.hInlet; hx.h(1:end)]) + DQ)/hx.OneTubeCellVolume;
+             hx.DQ = (Ta - hx.T)/hx.OneCellThermalResistance;
+             Dpsi = (-diff(hx.Dm .*[hx.hInlet; hx.h(1:end)]) + hx.DQ)/hx.OneTubeCellVolume;
              DpDh_vector = zeros(2,hx.nCell);
              for it = 1:hx.nCell
                  try
@@ -130,7 +129,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
             dTi = Parameters.Tpi - Parameters.Tso;
             dTo = Parameters.Tpo - Parameters.Tsi;
             hx.dTlog = (dTo - dTi)/log(dTo/dTi); 
-            hx.ThermalResistance = hx.dTlog/hx.Qnominal;
+            hx.ThermalResistance = hx.dTlog/hx.Qnominal; 
             % Discretizing
             hx.discretize();
             % Simulation
@@ -148,7 +147,8 @@ classdef HeatExchanger < matlab.mixin.Copyable
         end
         function discretize(hx)
             hx.OneTubeCellVolume = hx.OneTubeTotalVolume/hx.nCell;
-            hx.OneTubeCellResistance = sqrt(hx.OneTubeTotalResistance^2/hx.nCell);
+            hx.OneCellResistance = sqrt(hx.OneTubeTotalResistance^2/...
+                hx.nCell/hx.nParallelFlows);
             hx.OneCellThermalResistance = hx.ThermalResistance*hx.nCell;
         end
         function ph2d(hx)
