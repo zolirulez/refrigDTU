@@ -31,6 +31,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
         hInlet
         % Heat Exchange
         T
+        Ta
         ThermalResistance
         OneCellThermalResistance
         Qnominal
@@ -70,7 +71,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
                      partials = [partials [Dd_Dp; Dd_Dh]];
                  catch
                      global bugnumber
-                    bugnumber = bugnumber+1;
+                     bugnumber = bugnumber+1;
                 end
                 DpDh_vector(:,it) = [-1 hx.d(it); hx.Dd_Dp hx.Dd_Dh]\...
                     [Dpsi(it); hx.Dd(it)];
@@ -83,14 +84,13 @@ classdef HeatExchanger < matlab.mixin.Copyable
             %   time t2. Input is a structure that has the following
             %   fields: DmInlet, DmOutlet and the heatflow
             
-            x = [hx.p; hx.h; hx.d; hx.pState]; %; hx.pState; hx.hState; hx.dState];
+            x = [hx.p; hx.h; hx.d; hx.pState];
             [t, x] = ode15s(@hx.process,[t(1) t(2)],x,hx.ODEoptions,inputs);
             hx.record.t = [hx.record.t; t];
             hx.record.x = [hx.record.x; x];
             hx.p = x(end,1:hx.nCell)';
             hx.h = x(end,hx.nCell+1:2*hx.nCell)';
             hx.d = x(end,2*hx.nCell+1:3*hx.nCell)';
-            %hx.pState = x(end,3*hx.nCell+1:4*hx.nCell)';
         end
         function Dx = process(hx,t,x,Ta)
             % Time
@@ -129,7 +129,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
             dTi = Parameters.Tpi - Parameters.Tso;
             dTo = Parameters.Tpo - Parameters.Tsi;
             hx.dTlog = (dTo - dTi)/log(dTo/dTi); 
-            hx.ThermalResistance = hx.dTlog/hx.Qnominal; 
+            hx.ThermalResistance = hx.dTlog/hx.Qnominal/3; % Correction factor todo
             % Discretizing
             hx.discretize();
             % Simulation

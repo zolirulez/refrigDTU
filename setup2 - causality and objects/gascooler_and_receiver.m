@@ -6,7 +6,7 @@ givenVolume = 0.0192;
 Parameters.InnerTubeDiameter = 0.007;
 Parameters.nParallelFlows = 5;
 Parameters.OneTubelength = givenVolume/(Parameters.InnerTubeDiameter^2*pi/4);
-Parameters.f1 = 0.008; % In case of just a few cells, sensitivity is pretty low
+Parameters.f1 = 0.005; % In case of just a few cells, sensitivity is pretty low
 Parameters.Qnominal = 74300;
 Parameters.Tpi = 273+107;
 Parameters.Tpo = 273+33;
@@ -27,7 +27,7 @@ Initial.Dm = Dm;
 Initial.h = 300e3;
 HPValve.initialize(Kv,Tau,Initial);
 HPValve.hInlet = gc.h(end);
-Inputs.gcTa = 273+[38; 33]; % Note the compensation for the temperature drop
+Inputs.gcTa = 273+[35; 31]; % Note the compensation for the temperature drop
 % Receiver initialization
 recVolume = 0.133;
 rec = Receiver;
@@ -72,7 +72,7 @@ comp.pOutlet = 85e5;
 PIHPValve = PIController;
 PIrecValve = PIController;
 PIcomp = PIController;
-K = 1e-6;
+K = 1e-7;
 Ti = 50;
 mn = 0;
 mx = 1;
@@ -83,13 +83,13 @@ refMT = 30e5;
 timestep = 0.2;
 initInt = 0.25;
 PIHPValve.initialize(K,Ti,initInt,mn,mx,neg,timestep);
-K = 10e-5;
-Ti = 20;
+K = 1e-5;
+Ti = 200;
 initInt = 0.25;
 PIrecValve.initialize(K,Ti,initInt,mn,mx,neg,timestep);
 mx = 5;
-K = 1e-6;
-Ti = 200;
+K = 5e-7;
+Ti = 500;
 initInt = 0.1;
 PIcomp.initialize(K,Ti,initInt,mn,mx,neg,timestep);
 
