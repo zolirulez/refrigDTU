@@ -1,49 +1,44 @@
 classdef Fan < matlab.mixin.Copyable
    properties
-      Kv
-      tau
-      Dm
-      DDm
-      record
-      h
-      pInlet
-      pOutlet
-      hInlet
-      dInlet
+       DV
+       DDV
+       d
+       T
+       maxVolumeFlow
+       Tau
+       record
    end
    methods
-      function flow(valve,capacityRatio)
-         % Kv value is in non-SI units!
-         deltap = max([0,valve.pInlet - valve.pOutlet]);
-         Dm = 8.7841e-06*capacityRatio*valve.Kv*sqrt(valve.dInlet*(deltap)) ;
-         valve.DDm = (Dm - valve.Dm)/valve.tau;
+      function flow(fan,capacityRatio)
+         DV = capacityRatio*fan.maxVolumeFlow;
+         fan.DDV = (DV - fan.DV)/fan.tau;
       end
-      function enthalpy(valve)
-          valve.h = valve.hInlet;
-      end
-      function DDm = process(valve,t,x,capacityRatio)
+      function DDm = process(fan,t,x,capacityRatio)
           % State
-          valve.Dm = x;
+          fan.Dm = x;
           % Process
-          valve.flow(capacityRatio);
-          %valve.enthalpy();
+          fan.flow(capacityRatio);
           % Derivatives
-          DDm = valve.DDm;
+          DDm = fan.DDm;
       end
-      function initialize(valve,Kv,Tau,Initial)
-          valve.Kv = Kv;
-          valve.tau = Tau;
-          valve.Dm = Initial.Dm;
-          valve.h = Initial.h;
+      function initialize(fan,maxVolumeFlow,Tau,Initial)
+          fan.maxVolumeFlow = maxVolumeFlow;
+          fan.Tau = Tau;
+          fan.DV = Initial.DV;
+          fan.T = Initial.T;
           % Record
           Record.t = [];
           Record.x = [];
-          valve.record = Record;
+          fan.record = Record;
       end
-      function reinitialize(valve,Initial)
-          valve.Dm = Initial;
-          valve.record.t = [];
-          valve.record.x = [];
+      function reinitialize(fan,Initial)
+          fan.Dm = Initial.Dm;
+          fan.T = Initial.T;
+          fan.record.t = [];
+          fan.record.x = [];
+      end
+      function pT2d(fan)
+          fan.d = CoolProp.PropsSI('D','P',1.013e5,'T',fan.T,'AIR');
       end
    end
 end

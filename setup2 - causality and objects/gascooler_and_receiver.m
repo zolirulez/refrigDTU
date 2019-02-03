@@ -2,11 +2,16 @@ clearvars
 global bugnumber 
 bugnumber = 0;
 % Initialization
+% Gas Cooler
 givenVolume = 0.0192;
 Parameters.InnerTubeDiameter = 0.007;
 Parameters.nParallelFlows = 5;
 Parameters.OneTubelength = givenVolume/(Parameters.InnerTubeDiameter^2*pi/4);
 Parameters.f1 = 0.005; % In case of just a few cells, sensitivity is pretty low
+% Gas Cooler, thermal
+Parameters.NominalVolumeFlow = 3.33;
+Parameters.ConductionSlope = 900;
+Parameters.ConductionRatio = 0.2;
 Parameters.Qnominal = 74300;
 Parameters.Tpi = 273+107;
 Parameters.Tpo = 273+33;
@@ -68,10 +73,17 @@ comp.initialize(IsentropicEfficiency,Displacement,Tau,Initial);
 comp.hInlet = 400e3;
 comp.pInlet = 30e5;
 comp.pOutlet = 85e5;
+% Fan initialization
+fan = Fan;
+Initial.DV = 3.33;
+Initial.T = 273.15+30;
+maxVolumeFlow = 6.66;
+fan.initialize(maxVolumeFlow,Tau,Initial);
 % Controller initialization
 PIHPValve = PIController;
 PIrecValve = PIController;
 PIcomp = PIController;
+PIfan = PIController;
 K = 1e-7;
 Ti = 50;
 mn = 0;
@@ -80,6 +92,7 @@ neg = -1;
 refHP = 85e5;
 refRec = 38e5;
 refMT = 30e5;
+refFan = 273.15 + 33;
 timestep = 0.2;
 initInt = 0.25;
 PIHPValve.initialize(K,Ti,initInt,mn,mx,neg,timestep);
@@ -91,6 +104,8 @@ mx = 5;
 K = 5e-7;
 Ti = 500;
 initInt = 0.1;
+PIcomp.initialize(K,Ti,initInt,mn,mx,neg,timestep);
+initInt = 0.6;
 PIcomp.initialize(K,Ti,initInt,mn,mx,neg,timestep);
 
 % Connection object
@@ -108,12 +123,13 @@ Parts.MTJoint = MTJoint;
 Parts.RecJoint = RecJoint;
 Parts.recValve = recValve;
 Parts.connect = Connect;
+Parts.fan = Fan;
 Process = @process;
 PreProcess = @preProcess; 
 PostProcess = @postProcess; 
 ODEoptions = [];
 Initial = [gc.p; gc.h; gc.d; HPValve.Dm; rec.p; rec.h; rec.d;...
-    recValve.Dm; cooler.p; cooler.h; cooler.d; comp.Dm];
+    recValve.Dm; cooler.p; cooler.h; cooler.d; comp.Dm; fan.DV];
 pp.initialize(Parts,Process,PostProcess,Initial,ODEoptions);
 pp.initialInputs(Inputs);
 
@@ -125,6 +141,7 @@ for it = 1:itmax
     pp.Inputs.recValveCR = PIrecValve.react(refRec,pp.parts.rec.p);
     pp.Inputs.HPValveCR =  PIHPValve.react(refHP,pp.parts.gc.p(end));
     pp.Inputs.compFreq = PIcomp.react(refMT,pp.parts.cooler.p);
+    pp.Inputs.fanCR = PIcomp.react(refFan,pp.parts.gc.T(end));
     % Physical Plant
     pp.timestep(((it-1):it)*timestep);
 end

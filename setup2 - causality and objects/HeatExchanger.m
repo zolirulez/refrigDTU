@@ -32,8 +32,15 @@ classdef HeatExchanger < matlab.mixin.Copyable
         % Heat Exchange
         T
         Ta
-        ThermalResistance
-        OneCellThermalResistance
+        NominalThermalResistance
+        NominalVolumeFlow
+        ConductionSlope
+        OneCellConductionSlope
+        NaturalConduction             
+        OneCellNaturalConduction
+        DVInlet
+        cp                   
+        da         
         Qnominal
         dTlog
         DQ
@@ -57,7 +64,13 @@ classdef HeatExchanger < matlab.mixin.Copyable
                     bugnumber = bugnumber+1;
                 end
              end
-             hx.DQ = (Ta - hx.T)/hx.OneCellThermalResistance;
+             hx.oneCellThermalResistance =...
+                 1/(hx.OneCellNaturalConduction+hx.OneCellConductionSlope*hx.DVInlet)...
+                 + 1/(hx.da*hx.DVInlet*hx.cp);
+             weightFactor = hx.oneCellThermalResistance*hx.da*hx.DVInlet*hx.cp;
+             hx.Ta = 1/(weightFactor + 1)*flip(hx.T) +...
+                 1/(1/weightFactor + 1)*[hx.TInlet; hx.Ta(1:end-1)];
+             hx.DQ = (flip(hx.Ta) - hx.T)/hx.OneCellThermalResistance;
              Dpsi = (-diff(hx.Dm .*[hx.hInlet; hx.h(1:end)]) + hx.DQ)/hx.OneTubeCellVolume;
              DpDh_vector = zeros(2,hx.nCell);
              for it = 1:hx.nCell
@@ -125,17 +138,27 @@ classdef HeatExchanger < matlab.mixin.Copyable
             hx.ph2d;
             hx.ph2T;
             % Thermal properties
-            hx.Qnominal = Parameters.Qnominal;
-            dTi = Parameters.Tpi - Parameters.Tso;
-            dTo = Parameters.Tpo - Parameters.Tsi;
-            hx.dTlog = (dTo - dTi)/log(dTo/dTi); 
-            hx.ThermalResistance = hx.dTlog/hx.Qnominal/3; % Correction factor todo
+            hx.thermalInitialization(Parameters);
             % Discretizing
             hx.discretize();
             % Simulation
             Record.t = [];
             Record.x = [];
             hx.record = Record;
+        end
+        function thermalInitialization(hx,Parameters)
+            % Thermal properties
+            hx.Qnominal = Parameters.Qnominal;
+            dTi = Parameters.Tpi - Parameters.Tso;
+            dTo = Parameters.Tpo - Parameters.Tsi;
+            hx.dTlog = (dTo - dTi)/log(dTo/dTi); 
+            hx.NominalThermalResistance = hx.dTlog/hx.Qnominal;
+            hx.NominalVolumeFlow = Parameters.NominalVolumeFlow;
+            hx.ConductionSlope = (1 - Parameters.ConductionRatio)/...
+                hx.NominalThermalResistance/hx.NominalVolumeFlow;
+            hx.cp = 1000;
+            hx.da = 1.25;
+            hx.NaturalConduction = 1/(5*hx.NominalThermalResistance);
         end
         function reinitialize(hx,p,h)
             hx.p = linspace(p(1),p(2),hx.nCell)';
@@ -149,7 +172,8 @@ classdef HeatExchanger < matlab.mixin.Copyable
             hx.OneTubeCellVolume = hx.OneTubeTotalVolume/hx.nCell;
             hx.OneCellResistance = sqrt(hx.OneTubeTotalResistance^2/...
                 hx.nCell/hx.nParallelFlows);
-            hx.OneCellThermalResistance = hx.ThermalResistance*hx.nCell;
+            hx.OneCellConductionSlope = hx.ConductionSlope/hx.nCell;
+            hx.OneCellNaturalConduction = hx.NaturalConduction/hx.nCell;
         end
         function ph2d(hx)
             hx.d = zeros(hx.nCell,1);
