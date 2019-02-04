@@ -38,7 +38,9 @@ classdef HeatExchanger < matlab.mixin.Copyable
         OneCellConductionSlope
         NaturalConduction             
         OneCellNaturalConduction
+        oneCellThermalResistance
         DVInlet
+        TInlet
         cp                   
         da         
         Qnominal
@@ -55,7 +57,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
         function massAccummulation(hx)
             hx.Dd = -diff(hx.Dm)/hx.OneTubeCellVolume;
         end
-        function potentialAccummulation(hx,Ta)
+        function potentialAccummulation(hx)
              for it = 1:hx.nCell
                 try
                     hx.ph2T;
@@ -70,7 +72,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
              weightFactor = hx.oneCellThermalResistance*hx.da*hx.DVInlet*hx.cp;
              hx.Ta = 1/(weightFactor + 1)*flip(hx.T) +...
                  1/(1/weightFactor + 1)*[hx.TInlet; hx.Ta(1:end-1)];
-             hx.DQ = (flip(hx.Ta) - hx.T)/hx.OneCellThermalResistance;
+             hx.DQ = (flip(hx.Ta) - hx.T)/hx.oneCellThermalResistance;
              Dpsi = (-diff(hx.Dm .*[hx.hInlet; hx.h(1:end)]) + hx.DQ)/hx.OneTubeCellVolume;
              DpDh_vector = zeros(2,hx.nCell);
              for it = 1:hx.nCell
@@ -105,7 +107,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
             hx.h = x(end,hx.nCell+1:2*hx.nCell)';
             hx.d = x(end,2*hx.nCell+1:3*hx.nCell)';
         end
-        function Dx = process(hx,t,x,Ta)
+        function Dx = process(hx,t,x)
             % Time
             hx.t = t;
             % States
@@ -115,7 +117,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
             % Process
             massflow(hx);
             massAccummulation(hx);
-            potentialAccummulation(hx,Ta);
+            potentialAccummulation(hx);
             Dx = [hx.Dp; hx.Dh; hx.Dd];
         end
         function initialize(hx,nCell,p,h,Parameters)

@@ -11,15 +11,15 @@ classdef Fan < matlab.mixin.Copyable
    methods
       function flow(fan,capacityRatio)
          DV = capacityRatio*fan.maxVolumeFlow;
-         fan.DDV = (DV - fan.DV)/fan.tau;
+         fan.DDV = (DV - fan.DV)/fan.Tau;
       end
-      function DDm = process(fan,t,x,capacityRatio)
+      function DDV = process(fan,t,x,capacityRatio)
           % State
-          fan.Dm = x;
+          fan.DV = x;
           % Process
           fan.flow(capacityRatio);
           % Derivatives
-          DDm = fan.DDm;
+          DDV = fan.DDV;
       end
       function initialize(fan,maxVolumeFlow,Tau,Initial)
           fan.maxVolumeFlow = maxVolumeFlow;

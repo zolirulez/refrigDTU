@@ -7,7 +7,7 @@ givenVolume = 0.0192;
 Parameters.InnerTubeDiameter = 0.007;
 Parameters.nParallelFlows = 5;
 Parameters.OneTubelength = givenVolume/(Parameters.InnerTubeDiameter^2*pi/4);
-Parameters.f1 = 0.005; % In case of just a few cells, sensitivity is pretty low
+Parameters.f1 = 0.0005; % In case of just a few cells, sensitivity is pretty low
 % Gas Cooler, thermal
 Parameters.NominalVolumeFlow = 3.33;
 Parameters.ConductionSlope = 900;
@@ -19,10 +19,10 @@ Parameters.Tsi = 273+30;
 Parameters.Tso = 273+40;
 gc = HeatExchanger;
 p = [85.5e5 85e5];
-h = [400e3 298e3];
+h = [420e3 305e3];
 Tau = 0.1;
 ODEoptions = [];
-nCell = 2;
+nCell = 3;
 gc.initialize(nCell,p,h,Parameters)
 % HP Valve initialization
 HPValve = Valve;
@@ -32,7 +32,6 @@ Initial.Dm = Dm;
 Initial.h = 300e3;
 HPValve.initialize(Kv,Tau,Initial);
 HPValve.hInlet = gc.h(end);
-Inputs.gcTa = 273+[35; 31]; % Note the compensation for the temperature drop
 % Receiver initialization
 recVolume = 0.133;
 rec = Receiver;
@@ -84,8 +83,8 @@ PIHPValve = PIController;
 PIrecValve = PIController;
 PIcomp = PIController;
 PIfan = PIController;
-K = 1e-7;
-Ti = 50;
+K = 2e-6;
+Ti = 10;
 mn = 0;
 mx = 1;
 neg = -1;
@@ -96,17 +95,19 @@ refFan = 273.15 + 33;
 timestep = 0.2;
 initInt = 0.25;
 PIHPValve.initialize(K,Ti,initInt,mn,mx,neg,timestep);
-K = 1e-5;
-Ti = 200;
+K = 5e-7;
+Ti = 5;
 initInt = 0.25;
 PIrecValve.initialize(K,Ti,initInt,mn,mx,neg,timestep);
 mx = 5;
 K = 5e-7;
-Ti = 500;
+Ti = 10;
 initInt = 0.1;
 PIcomp.initialize(K,Ti,initInt,mn,mx,neg,timestep);
-initInt = 0.6;
-PIcomp.initialize(K,Ti,initInt,mn,mx,neg,timestep);
+K = 1.2e-1;
+Ti = 5;
+initInt = 2;
+PIfan.initialize(K,Ti,initInt,mn,mx,neg,timestep);
 
 % Connection object
 connect = Connect;
@@ -123,7 +124,7 @@ Parts.MTJoint = MTJoint;
 Parts.RecJoint = RecJoint;
 Parts.recValve = recValve;
 Parts.connect = Connect;
-Parts.fan = Fan;
+Parts.fan = fan;
 Process = @process;
 PreProcess = @preProcess; 
 PostProcess = @postProcess; 
@@ -134,43 +135,42 @@ pp.initialize(Parts,Process,PostProcess,Initial,ODEoptions);
 pp.initialInputs(Inputs);
 
 % Simulation
-itmax = 500;
+itmax = 5000;
 tic
 for it = 1:itmax
     % Controller
     pp.Inputs.recValveCR = PIrecValve.react(refRec,pp.parts.rec.p);
     pp.Inputs.HPValveCR =  PIHPValve.react(refHP,pp.parts.gc.p(end));
     pp.Inputs.compFreq = PIcomp.react(refMT,pp.parts.cooler.p);
-    pp.Inputs.fanCR = PIcomp.react(refFan,pp.parts.gc.T(end));
+    pp.Inputs.fanCR = PIfan.react(refFan,pp.parts.gc.T(end));
     % Physical Plant
     pp.timestep(((it-1):it)*timestep);
+    % Plotting
+    if ~rem(it,10)
+        pause(0.1)
+        subplot(521)
+        plot(pp.t,pp.parts.gc.record.x(:,1:nCell))
+        subplot(522)
+        plot(pp.t,pp.parts.gc.record.x(:,1*nCell+1:2*nCell))
+        subplot(523)
+        plot(pp.t,pp.parts.HPValve.record.x);
+        subplot(524)
+        plot(pp.t,pp.parts.rec.record.x(:,1))
+        subplot(525)
+        plot(pp.t,pp.parts.rec.record.x(:,2))
+        subplot(526)
+        plot(pp.t,pp.parts.recValve.record.x)
+        subplot(527)
+        plot(pp.t,pp.parts.cooler.record.x(:,1))
+        subplot(528)
+        plot(pp.t,pp.parts.cooler.record.x(:,2))
+        subplot(529)
+        plot(pp.t,pp.parts.comp.record.x)
+        subplot(5,2,10)
+        plot(pp.t,pp.parts.fan.record.x)
+    end
 end
 toc
-figure(1)
-subplot(621)
-plot(pp.t,pp.parts.gc.record.x(:,1:nCell))
-subplot(622)
-plot(pp.t,pp.parts.gc.record.x(:,1*nCell+1:2*nCell))
-subplot(623)
-plot(pp.t,pp.parts.gc.record.x(:,2*nCell+1:3*nCell))
-subplot(624)
-plot(pp.t,pp.parts.HPValve.record.x);
-subplot(625)
-plot(pp.t,pp.parts.rec.record.x(:,1))
-subplot(626)
-plot(pp.t,pp.parts.rec.record.x(:,2))
-subplot(627)
-plot(pp.t,pp.parts.rec.record.x(:,3))
-subplot(628)
-plot(pp.t,pp.parts.recValve.record.x)
-subplot(629)
-plot(pp.t,pp.parts.cooler.record.x(:,1))
-subplot(6,2,10)
-plot(pp.t,pp.parts.cooler.record.x(:,2))
-subplot(6,2,11)
-plot(pp.t,pp.parts.cooler.record.x(:,3))
-subplot(6,2,12)
-plot(pp.t,pp.parts.comp.record.x)
 disp(['Number of CoolProp bugs were ' num2str(bugnumber)])
 
 % Functions for Physical Plant
@@ -187,12 +187,13 @@ function Dx = process(t,x,pp)
     MTJoint = pp.parts.MTJoint;
     RecJoint = pp.parts.RecJoint;
     connect = pp.parts.connect;
+    fan = pp.parts.fan;
     % Disturbances
-    gcTa = pp.Inputs.gcTa;
     coolerDQ = pp.Inputs.coolerDQ;
     recValveCR = pp.Inputs.recValveCR;
     HPValveCR = pp.Inputs.HPValveCR;
     compFreq = pp.Inputs.compFreq;
+    fanCR = pp.Inputs.fanCR;
     % States
     xGC = x(1:gc.nCell*3);
     xHPValve = x(gc.nCell*3+1);
@@ -200,6 +201,7 @@ function Dx = process(t,x,pp)
     xRecValve = x(gc.nCell*3+5);
     xCooler = x(gc.nCell*3+6:gc.nCell*3+8);
     xComp = x(gc.nCell*3+9);
+    xFan = x(gc.nCell*3+10);
     gc.p = xGC(1:gc.nCell);
     gc.h = xGC(gc.nCell+1:2*gc.nCell);
     gc.d = xGC(2*gc.nCell+1:3*gc.nCell);
@@ -212,6 +214,7 @@ function Dx = process(t,x,pp)
     cooler.h = xCooler(2);
     cooler.d = xCooler(3);
     comp.Dm = xComp;
+    fan.DV = xFan;
     % Static equations: inner propagation of states
     rec.separation;
     % Connections: joints
@@ -233,6 +236,7 @@ function Dx = process(t,x,pp)
     connect.inlet(HPValve,gc,{'p','h','d'});
     connect.inlet(gc,comp,{'Dm','h'});
     connect.outlet(gc,HPValve,{'Dm'});
+    connect.inlet(gc,fan,{'T','DV'});
     connect.outlet(cooler,MTJoint,{'Dm'});
     connect.inlet(cooler,RecJoint,{'h'});
     % Static equations: inner propagations of connected inlets
@@ -249,9 +253,11 @@ function Dx = process(t,x,pp)
     % HP Valve
     DHPValve = HPValve.process(t,xHPValve,HPValveCR);
     % Gas cooler
-    DGC = gc.process(t,xGC,gcTa);
+    DGC = gc.process(t,xGC);
+    % Fan
+    DFan = fan.process(t,xFan,fanCR);
     % Derivative
-    Dx = [DGC; DHPValve; DRec; DRecValve; DCooler; DComp];
+    Dx = [DGC; DHPValve; DRec; DRecValve; DCooler; DComp; DFan];
 end
 function postProcess(X,pp)
 % In this function, the states and the records are updated
@@ -265,6 +271,7 @@ function postProcess(X,pp)
     MTJoint = pp.parts.MTJoint;
     RecJoint = pp.parts.RecJoint;
     connect = pp.parts.connect;
+    fan = pp.parts.fan;
     % States
     XGC = X(:,1:gc.nCell*3);
     XHPValve = X(:,gc.nCell*3+1);
@@ -272,6 +279,7 @@ function postProcess(X,pp)
     XRecValve = X(:,gc.nCell*3+5);
     XCooler = X(:,gc.nCell*3+6:gc.nCell*3+8);
     XComp = X(:,gc.nCell*3+9);
+    XFan = X(:,gc.nCell*3+10);
     % Recording
     gc.record.x = [gc.record.x; XGC];
     HPValve.record.x = [HPValve.record.x; XHPValve];
@@ -279,6 +287,7 @@ function postProcess(X,pp)
     recValve.record.x = [recValve.record.x; XRecValve];
     cooler.record.x = [cooler.record.x; XCooler];
     comp.record.x = [comp.record.x; XComp];
+    fan.record.x = [fan.record.x; XFan];
     % State setting for next iteration
     gc.p = XGC(end,1:gc.nCell)';
     gc.h = XGC(end,gc.nCell+1:2*gc.nCell)';
@@ -292,6 +301,7 @@ function postProcess(X,pp)
     HPValve.Dm = XHPValve(end,1);
     recValve.Dm = XRecValve(end,1);
     comp.Dm = XComp(end,1);
+    fan.DV = XFan(end,1);
     % Static equations: inner propagation of states
     rec.separation;
     % Connections: joints
@@ -313,6 +323,7 @@ function postProcess(X,pp)
     connect.inlet(HPValve,gc,{'p','h','d'});
     connect.inlet(gc,comp,{'Dm','h'});
     connect.outlet(gc,HPValve,{'Dm'});
+    connect.inlet(gc,fan,{'T','DV'});
     connect.outlet(cooler,MTJoint,{'Dm'});
     connect.inlet(cooler,RecJoint,{'h'});
     % Static equations: inner propagations of connected inlets

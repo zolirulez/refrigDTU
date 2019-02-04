@@ -1,7 +1,7 @@
 classdef Valve < matlab.mixin.Copyable
    properties
       Kv
-      tau
+      Tau
       Dm
       DDm
       record
@@ -16,7 +16,7 @@ classdef Valve < matlab.mixin.Copyable
          % Kv value is in non-SI units!
          deltap = max([0,valve.pInlet - valve.pOutlet]);
          Dm = 8.7841e-06*capacityRatio*valve.Kv*sqrt(valve.dInlet*(deltap)) ;
-         valve.DDm = (Dm - valve.Dm)/valve.tau;
+         valve.DDm = (Dm - valve.Dm)/valve.Tau;
       end
       function enthalpy(valve)
           valve.h = valve.hInlet;
@@ -32,7 +32,7 @@ classdef Valve < matlab.mixin.Copyable
       end
       function initialize(valve,Kv,Tau,Initial)
           valve.Kv = Kv;
-          valve.tau = Tau;
+          valve.Tau = Tau;
           valve.Dm = Initial.Dm;
           valve.h = Initial.h;
           % Record
