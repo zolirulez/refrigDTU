@@ -1,26 +1,57 @@
 clearvars
 close all
-syms KvV KvG TauV TauG R VGC VR DdDp1 DdDh1 DdDp2 DdDh2 DdDpR DdDhR
-syms p1 p2 pR pEC h1 h2 hMT hL hG hR d1 d2 dR dG DQ CRV CRG DmV DmMT DmG DmL 
+syms KvV KvG TauV TauG R VGC VR VC VMT DdDp1 DdDh1 DdDp2 DdDh2 DdDpR DdDhR DdDpC DdDhC eS DdDpMT DdDhMT
+syms p1 p2 pR pC h1 h2 hMT hL hG hR hC hCi hF d1 d2 dR dG dC dMT dA DQ1 DQ2 DQC DQF CRV CRG fMT fA DVA DmV DmMT DmG DmL DmCi DmCo DmLT DmF DVA
+syms s s0 k cp TA1 TA2 T1 T2 TA0 DTDp1 DTDh1 DTDp2 DTDh2
+% ----------------------- STATIC EQUATIONS --------------------------------
+% TODO: grouping and ordering!
+% ---------------------- DYNAMIC EQUATIONS --------------------------------
 % High pressure valve
 DDmV = 1/TauV*(-DmV + CRV*KvV*sqrt(d2*(p2 - pR)));
 % Gas cooler
+s = 1/(1/(s0 + k*DVA) + 1/(dA*DVA*cp));
+w = dA*DVA*cp/s;
+T1 = DTDp1*p1 + DTDh1*h1; % Note: constant is missing
+T2 = DTDp2*p2 + DTDh2*h2; % Note: constant is missing
+TA1 = 1/(w+1)*T1 + 1/(1/w+1)*TA0;
+TA2 = 1/(w+1)*T2 + 1/(1/w+1)*TA1;
+DQ1 = (TA1 - T1)*s;
+DQ2 = (TA2 - T2)*s;
 Dm21 = 1/R*sqrt(d1*(p1-p2));
 Dd1 = 1/VGC*(DmMT-Dm21);
 Dd2 = 1/VGC*(Dm21-DmV);
-Joint1 = [-1 d1; DdDp1 DdDh1];
-Joint2 = [-1 d2; DdDp2 DdDh2];
-DPsi1 = 1/VGC*(DmMT*hMT-Dm21*h1 + DQ/2);
-DPsi2 = 1/VGC*(Dm21*h1-DmV*h2 + DQ/2);
-Dph1 = Joint1\[DPsi1; Dd1];
-Dph2 = Joint2\[DPsi2; Dd2];
+Joining1 = [-1 d1; DdDp1 DdDh1];
+Joining2 = [-1 d2; DdDp2 DdDh2];
+DPsi1 = 1/VGC*(DmMT*hMT-Dm21*h1 + DQ1);
+DPsi2 = 1/VGC*(Dm21*h1-DmV*h2 + DQ2);
+Dph1 = Joining1\[DPsi1; Dd1];
+Dph2 = Joining2\[DPsi2; Dd2];
+% Receiver Joint
+DmL = DmF + DmCi;
 % Receiver
 DdR = 1/VR*(DmV-DmL-DmG);
 JointR = [-1 dR; DdDpR DdDhR];
 DPsiR = 1/VR*(DmV*h2 - DmL*hL - DmG*hG);
 DphR = JointR\[DPsiR; DdR];
 % Receiver valve: density is set as constant
-DDmG = 1/TauG*(-DmG + CRG*KvG*sqrt(dG*(pR - pEC)));
+DDmG = 1/TauG*(-DmG + CRG*KvG*sqrt(dG*(pR - pC)));
+% Freezer BC 
+DmF = DQF/(hF-hL);
+% MT Joint 
+DmCo = - DmG + DmMT - DmF;
+hMTi = (DmG*hG + DmCo*hC + DmF*hF)/DmMT;
+dMT = DdDpMT*pC + DdDhMT*hMTi; % Note: constant is missing
+% Compressor
+DmMT = fMT*dMT*VMT;
+hMT = hMTi + DhDpMT*(p1 - pC)/eS;
+% Cooler volume
+DmCi = DQC/(hC-hL);
+DdC = 1/VC*(DmCi-DmCo);
+JoiningC = [-1 dC; DdDpC DdDhC];
+DPsiC = 1/VGC*(DmCi*hCi-DmCo*hC);
+DphC = JoiningC\[DPsiC; DdC];
+% Fan (A refers to air)
+DDVA = dA*DVA*fA;
 % Augmentation
 Dx = [Dph1; Dd1; Dph2; Dd2; DDmV; DphR; DdR; DDmG];
 x = [p1; h1; d1; p2; h2; d2; DmV; pR; hR; dR; DmG];

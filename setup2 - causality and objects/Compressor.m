@@ -19,11 +19,7 @@ classdef Compressor   < matlab.mixin.Copyable
       end
       function enthalpy(comp)
          s = CoolProp.PropsSI('S','H',comp.hInlet,'P',comp.pInlet,'CO2');
-         try
-             hIdeal = CoolProp.PropsSI('H','S',s,'P',comp.pOutlet,'CO2');
-         catch
-             hIdeal = 525e3; % CLEAR THIS TODO
-         end
+         hIdeal = CoolProp.PropsSI('H','S',s,'P',comp.pOutlet,'CO2');
          comp.h = (hIdeal - comp.hInlet)/comp.IsentropicEfficiency + comp.hInlet;
       end
       function DDm = process(comp,t,x,frequency)
