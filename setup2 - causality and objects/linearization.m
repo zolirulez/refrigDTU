@@ -1,8 +1,8 @@
 clearvars
 close all
-syms KvV KvG TauV TauG R VGC VR VC VMT DdDp1 DdDh1 DdDp2 DdDh2 DdDpR DdDhR DdDpC DdDhC eS DdDpMT DdDhMT DhDpMT
-syms p1 p2 pR pC h1 h2 hMT hL hG hR hC hCi hF d1 d2 dR dG dC dMT dA DQ1 DQ2 DQC DQF CRV CRG fMT fA DVA DmV DmMT DmG DmL DmCi DmCo DmLT DmF DVA
-syms s s0 k cp TA1 TA2 T1 T2 TA0 DTDp1 DTDh1 DTDp2 DTDh2
+syms KvV KvG TauV TauG TauMT TauA R VGC VR VC VMT DdDp1 DdDh1 DdDp2 DdDh2 DdDpR DdDhR DdDpC DdDhC eS DdDpMT DdDhMT DhDpMT
+syms p1 p2 pR pC h1 h2 hMT hL hG hR hC hCi hF d1 d2 dR dG dC dMT dA DQC DQF CRV CRG fMT fA DVA DmV DmMT DmG DmL DmCi DmCo DmLT DmF DVA
+syms s s0 k cp TA1 TA2 T1 T2 TA0 DTDp1 DTDh1 DTDp2 DTDh2 MxDVA
 % ----------------------- STATIC EQUATIONS --------------------------------
 % Gas cooler, heat transfer
 s = 1/(1/(s0 + k*DVA) + 1/(dA*DVA*cp));
@@ -55,26 +55,24 @@ DDmG = 1/TauG*(-DmG + CRG*KvG*sqrt(dG*(pR - pC)));
 % MT Joint 
 DdMT = [DdDpMT DdDhMT]*[pC; hMTi];
 % Compressor
+DDmMT = 1/TauMT*(-DmMT + dMT*VMT*fMT);
 % Cooler volume
 DdC = 1/VC*(DmCi-DmCo);
 DphC = JoiningC\[DPsiC; DdC];
 % Fan (A refers to air)
-DDVA = dA*DVA*fA;
+DDVA = 1/TauA*(-DVA + dA*MxDVA*fA);
 % ------------------------ LINEARIZATION ----------------------------------
 % Augmentation
-Dx = [Dph1; Dd1; Dph2; Dd2; DDmV; DphR; DdR; DDmG];
-x = [p1; h1; d1; p2; h2; d2; DmV; pR; hR; dR; DmG];
-u = [CRV; CRG];
-d = [DmMT; hMT; DmL; hL; pEC; DQ];
-% Assumptions, do we need them?
-%assume([KvV TauV R VGC VR DdDp1 -DdDh1 DdDp2 -DdDh2 DdDpR -DdDhR...
-%    p1 p2 pR h1 h2 hMT hL hG hR d1 d2 dR -DQ CRV DmV DmMT DmG DmL]>0)
+Dx = [DDVA; Dph1; Dd1; DT1; Dph2; Dd2; DT2; DDmV; DphR; DdR; DDmG; DphC; DdC; DdMT; DDmMT];
+x = [DVA; p1; h1; d1; T1; p2; h2; d2; T2; DmV; pR; hR; dR; DmG; pC; hC; dC; dMT; DmMT];
+u = [fA; CRV; CRG; fMT];
+d = [dA; TA0; DmMT; hL; hG; dG; hCi; hF; DQC; DQF];
 % Jacobians
 A = jacobian(Dx,x);
 B = jacobian(Dx,u);
 G = jacobian(Dx,d);
 % Substitutions check the values TODO
-A = subs(A,{p1 p2 pR pEC},num2cell([86 84.8 38 30]*10^5));
+A = subs(A,{p1 p2 pR pC},num2cell([86 84.8 38 30]*10^5));
 A = subs(A,{h1 h2 hMT hL hG hR},num2cell([500 350 525 250 400 300]*10^3));
 A = subs(A,{d1 d2 dR dG},num2cell([2.8 7 2.2 1]*10^2));
 A = subs(A,{DmV DmMT DmG DmL},num2cell([0.321 0.321 0.123 0.198]*10^0));
@@ -87,6 +85,7 @@ A = subs(A,{VGC VR},num2cell([19.2 133]*10^-3));
 A = subs(A,{DdDp1 DdDp2 DdDpR},num2cell([3 3 4]*10^-5));
 A = subs(A,{DdDh1 DdDh2 DdDhR},num2cell([-2 -4 -1.5]*10^-3));
 A = double(A);
+% ----------------------- POSTPROCESSING ----------------------------------
 % Normalizing with maximum deviations
 % x = [p1; h1; d1; p2; h2; d2; DmV; pR; hR; dR; DmG];
 T = diag(1./[20*10^5; 50*10^3; 0.5*10^2; 20*10^5; 50*10^3; 0.5*10^2; 0.2;...
@@ -96,6 +95,7 @@ B = T*B;
 G = T*G;
 expA = sign(A).*exp(abs(A));
 expA(A==0) = 0;
+% -------------------------- PLOTTING -------------------------------------
 figure(1)
 imagesc(expA,[-10 10])
 colormap('jet')
