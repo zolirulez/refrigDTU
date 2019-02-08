@@ -1,6 +1,6 @@
 clearvars
 close all
-syms KvV KvG TauV TauG R VGC VR VC VMT DdDp1 DdDh1 DdDp2 DdDh2 DdDpR DdDhR DdDpC DdDhC eS DdDpMT DdDhMT DhDpMT
+syms KvV KvG TauV TauG R VGC VR VC VMT DdDp1 DdDh1 DdDp2 DdDh2 DdDpR DdDhR DdDpC DdDhC eS DdDpMT DdDhMT
 syms p1 p2 pR pC h1 h2 hMT hL hG hR hC hCi hF d1 d2 dR dG dC dMT dA DQ1 DQ2 DQC DQF CRV CRG fMT fA DVA DmV DmMT DmG DmL DmCi DmCo DmLT DmF DVA
 syms s s0 k cp TA1 TA2 T1 T2 TA0 DTDp1 DTDh1 DTDp2 DTDh2
 % ----------------------- STATIC EQUATIONS --------------------------------
@@ -39,12 +39,12 @@ DPsi2 = 1/VGC*(Dm21*h1-DmV*h2 + DQ2);
 % High pressure valve
 DDmV = 1/TauV*(-DmV + CRV*KvV*sqrt(d2*(p2 - pR)));
 % Gas cooler
+DT1 = [DTDp1 DTDh1]*Dph1;
+DT2 = [DTDp2 DTDh2]*Dph2;
 Dd1 = 1/VGC*(DmMT-Dm21);
 Dd2 = 1/VGC*(Dm21-DmV);
 Dph1 = Joining1\[DPsi1; Dd1];
 Dph2 = Joining2\[DPsi2; Dd2];
-DT1 = [DTDp1 DTDh1]*Dph1;
-DT2 = [DTDp2 DTDh2]*Dph2;
 % Receiver Joint
 % Receiver
 DdR = 1/VR*(DmV-DmL-DmG);
@@ -60,7 +60,6 @@ DdC = 1/VC*(DmCi-DmCo);
 DphC = JoiningC\[DPsiC; DdC];
 % Fan (A refers to air)
 DDVA = dA*DVA*fA;
-% ------------------------ LINEARIZATION ----------------------------------
 % Augmentation
 Dx = [Dph1; Dd1; Dph2; Dd2; DDmV; DphR; DdR; DDmG];
 x = [p1; h1; d1; p2; h2; d2; DmV; pR; hR; dR; DmG];
