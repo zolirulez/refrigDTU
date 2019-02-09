@@ -73,23 +73,30 @@ B = jacobian(Dx,u);
 G = jacobian(Dx,d);
 % Substitutions check the values TODO
 A = subs(A,{p1 p2 pR pC},num2cell([86 84.8 38 30]*10^5));
-A = subs(A,{h1 h2 hMT hL hG hR},num2cell([500 350 525 250 400 300]*10^3));
-A = subs(A,{d1 d2 dR dG},num2cell([2.8 7 2.2 1]*10^2));
-A = subs(A,{DmV DmMT DmG DmL},num2cell([0.321 0.321 0.123 0.198]*10^0));
-A = subs(A,{CRV CRG},num2cell([0.25 0.25]*10^0));
-A = subs(A,{DQ},num2cell([-74.3]*10^3));
+A = subs(A,{h1 h2 hMT hL hG hR hC hCi hF},num2cell([450 350 525 212 430 300 460 460 460]*10^3));
+A = subs(A,{d1 d2 dR dG dC dMT dA},num2cell([280 700 220 100 80 80 1.25]));
+A = subs(A,{TA0 TA1 TA2 T1 T2},num2cell([30 35 40 90 50]+273.15));
+A = subs(A,{DmV DmMT DmG DmL DmCi DmCo DmLT DmF},num2cell([0.321 0.321 0.123 0.198 0.151 0.151 0.046 0.046]));
+A = subs(A,{DVA MxDVA},{3.33 6.66});
+A = subs(A,{CRV CRG fMT fA},num2cell([0.25 0.25 0.25 0.6]));
+A = subs(A,{DQC DQF},num2cell([36 11]*10^3));
 A = subs(A,{KvV KvG},num2cell([0.8 2]*8.7841e-06));
-A = subs(A,{TauV TauG},num2cell([0.1 0.1]*10^0));
-A = subs(A,{R},num2cell([1.5]*10^5)); % TODO
-A = subs(A,{VGC VR},num2cell([19.2 133]*10^-3));
-A = subs(A,{DdDp1 DdDp2 DdDpR},num2cell([3 3 4]*10^-5));
-A = subs(A,{DdDh1 DdDh2 DdDhR},num2cell([-2 -4 -1.5]*10^-3));
+A = subs(A,{TauV TauG TauMT TauA},num2cell([0.1 0.1 1 1]*10^0));
+A = subs(A,{R},num2cell(1.5*10^5));
+A = subs(A,{eS},num2cell(0.6));
+A = subs(A,{s s0 k cp},num2cell([1000 200 900 1000]));
+A = subs(A,{VGC VR VC VMT},num2cell([19.2 133 100 0.1]*10^-3));
+A = subs(A,{DdDp1 DdDp2 DdDpR DdDpC DdDpMT},num2cell([3 3 4 2.7 2.4]*10^-5)); % TODO
+A = subs(A,{DdDh1 DdDh2 DdDhR DdDhC DdDhMT},num2cell([-2 -4 -1.5 -42 -33]*10^-3)); % TODO
+A = subs(A,{DTDp1 DTDp2},num2cell([7.2 5.6]*10^-6)); % TODO
+A = subs(A,{DTDh1 DTDh2},num2cell([4.7 55]*10^-4)); % TODO
+A = subs(A,{DhDpMT},num2cell(0.01));
 A = double(A);
 % ----------------------- POSTPROCESSING ----------------------------------
 % Normalizing with maximum deviations
-% x = [p1; h1; d1; p2; h2; d2; DmV; pR; hR; dR; DmG];
-T = diag(1./[20*10^5; 50*10^3; 0.5*10^2; 20*10^5; 50*10^3; 0.5*10^2; 0.2;...
-    20*10^5; 50*10^3; 0.5*10^2; 0.2]);
+% x = [DVA; p1; h1; d1; T1; p2; h2; d2; T2; DmV; pR; hR; dR; DmG; pC; hC; dC; dMT; DmMT];
+T = diag(1./[1; 20*10^5; 50*10^3; 50; 5; 20*10^5; 50*10^3; 50; 5; 0.2;...
+    20*10^5; 50*10^3; 50; 0.2; 20*10^5; 50*10^3; 50; 50; 0.2]);
 A = T*A/T;
 B = T*B;
 G = T*G;
