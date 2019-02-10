@@ -22,7 +22,7 @@ hMT = hMTi + DhDpMT*(p1 - pC)/eS;
 % Cooler volume
 DmCi = DQC/(hC-hL);
 JoiningC = [-1 dC; DdDpC DdDhC];
-DPsiC = 1/VGC*(DmCi*hCi-DmCo*hC);
+DPsiC = 1/VC*(DmCi*hCi-DmCo*hC);
 % Receiver Joint
 DmL = DmF + DmCi;
 % Receiver
@@ -87,7 +87,7 @@ A = subs(A,{eS},num2cell(0.6));
 A = subs(A,{s s0 k cp},num2cell([1000 200 900 1000]));
 A = subs(A,{VGC VR VC VMT},num2cell([19.2 133 100 0.1]*10^-3));
 A = subs(A,{DdDp1 DdDp2 DdDpR DdDpC DdDpMT},num2cell([3 3 4 2.7 2.4]*10^-5)); % TODO
-A = subs(A,{DdDh1 DdDh2 DdDhR DdDhC DdDhMT},num2cell([-2 -4 -1.5 -42 -33]*10^-3)); % TODO
+A = subs(A,{DdDh1 DdDh2 DdDhR DdDhC DdDhMT},num2cell([-2 -4 -1.5 -0.4 -0.3]*10^-3)); % TODO
 A = subs(A,{DTDp1 DTDp2},num2cell([7.2 5.6]*10^-6)); % TODO
 A = subs(A,{DTDh1 DTDh2},num2cell([4.7 55]*10^-4)); % TODO
 A = subs(A,{DhDpMT},num2cell(0.01));
@@ -95,11 +95,21 @@ A = double(A);
 % ----------------------- POSTPROCESSING ----------------------------------
 % Normalizing with maximum deviations
 % x = [DVA; p1; h1; d1; T1; p2; h2; d2; T2; DmV; pR; hR; dR; DmG; pC; hC; dC; dMT; DmMT];
-T = diag(1./[1; 20*10^5; 50*10^3; 50; 5; 20*10^5; 50*10^3; 50; 5; 0.2;...
-    20*10^5; 50*10^3; 50; 0.2; 20*10^5; 50*10^3; 50; 50; 0.2]);
+cond(A)
+DVBound = 2; 
+pBound = 20*10^5;
+hBound = 50*10^3;
+dBound = 20;
+TBound = 10;
+DmBound = 0.2;
+T = diag(1./[DVBound; pBound; hBound; dBound; TBound; pBound; hBound; dBound; TBound; DmBound;...
+    pBound; hBound; dBound; DmBound; pBound; hBound; dBound; dBound; DmBound]);
+% z = Tx
+% Dz = TA/Tx
 A = T*A/T;
 B = T*B;
 G = T*G;
+cond(A)
 expA = sign(A).*exp(abs(A));
 expA(A==0) = 0;
 % -------------------------- PLOTTING -------------------------------------
@@ -111,13 +121,17 @@ xlabel(char(x))
 ylabel(['Diff' char(x)])
 title('Pieceswise exponential of normalized system A, bounded by -10...10')
 % Modal analysis
-[~,eigA,W] = eig(A);
-% Separating real and imaginary value?
-W = W';
-% W = [W(1:6,:); real(W(7,:)); imag(W(7,:)); W(9:end,:)];
-% Is this right? should not be first the inverse, then the reordering?
-% (This was just a copy paste from the exercise on LCD2)
-%V = [V(:,1) real(V(:,2)) imag(V(:,2)) real(V(:,4)) imag(V(:,4)) V(:,6:end)];
+% Vz = x
+% Dz = V\AVz
+% V\AV = D
+% AV = VD
+[V,eigA] = eig(A);
+V*eigA/V-A
+invV = inv(V);
+% Separating real and imaginary values
+invV = real([invV(1:9,:); real(invV(10,:)); imag(invV(10,:));...
+    invV(12:14,:); real(invV(15,:)); imag(invV(15,:));...
+    real(invV(17,:)); imag(invV(17,:)); invV(19,:)]);
 figure(2)
 subplot(131)
 imagexpeigA = sign(imag(eigA)).*exp(abs(imag(eigA)));
@@ -138,10 +152,9 @@ xlabel('z')
 ylabel('Dz')
 title('realexpeigA')
 subplot(133)
-imagesc(W,[-10^0.2 10^0.2])
-% imagesc(V',[-1 1])
+imagesc(invV,[-10^1 10^1])
 colormap('jet')
 colorbar
 xlabel(char(x))
 ylabel('z')
-title('W^T')
+title('inv(V) reordered')
