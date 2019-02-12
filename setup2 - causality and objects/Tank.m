@@ -36,7 +36,8 @@ classdef Tank < matlab.mixin.Copyable
                 global bugnumber
                 bugnumber = bugnumber+1;
             end
-            DpDh_vector = [-1 tank.d; tank.Dd_Dp tank.Dd_Dh]\[tank.Dpsi; tank.Dd];
+            DpDh_vector = [-1 tank.d; tank.Dd_Dp tank.Dd_Dh]\...
+                [tank.Dpsi-tank.p/tank.d*tank.Dd; tank.Dd];
             tank.Dp = DpDh_vector(1,1);
             tank.Dh = DpDh_vector(2,1);
         end

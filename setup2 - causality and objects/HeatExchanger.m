@@ -89,7 +89,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
                      bugnumber = bugnumber+1;
                 end
                 DpDh_vector(:,it) = [-1 hx.d(it); hx.Dd_Dp hx.Dd_Dh]\...
-                    [Dpsi(it); hx.Dd(it)];
+                    [Dpsi(it)-hx.p(it)/hx.d(it)*hx.Dd(it); hx.Dd(it)];
             end
             hx.Dp = DpDh_vector(1,:)';
             hx.Dh = DpDh_vector(2,:)';

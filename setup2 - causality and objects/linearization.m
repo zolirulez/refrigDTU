@@ -20,7 +20,7 @@ hMTi = (DmG*hG + DmCo*hC + DmF*hF)/DmMT;
 % Compressor
 hMT = hMTi + DhDpMT*(p1 - pC)/eS;
 % Cooler volume
-DmCi = DQC/(hC-hL);
+DmCi = DQC/(hCi-hL);
 JoiningC = [-1 dC; DdDpC DdDhC];
 DPsiC = 1/VC*(DmCi*hCi-DmCo*hC);
 % Receiver Joint
@@ -52,13 +52,15 @@ DphR = JointR\[DPsiR; DdR];
 % Receiver valve: density is set as constant
 DDmG = 1/TauG*(-DmG + CRG*KvG*sqrt(dG*(pR - pC)));
 % Freezer BC 
-% MT Joint 
-DdMT = [DdDpMT DdDhMT]*[pC; hMTi];
 % Compressor
 DDmMT = 1/TauMT*(-DmMT + dMT*VMT*fMT);
 % Cooler volume
 DdC = 1/VC*(DmCi-DmCo);
 DphC = JoiningC\[DPsiC; DdC];
+% MT Joint 
+DpMT = DphC(1);
+DhMTi = DphC(2);
+DdMT = [DdDpMT DdDhMT]*[DpMT; DhMTi];
 % Fan (A refers to air)
 DDVA = 1/TauA*(-DVA + dA*MxDVA*fA);
 % ------------------------ LINEARIZATION ----------------------------------

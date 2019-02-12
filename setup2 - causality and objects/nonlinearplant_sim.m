@@ -22,7 +22,7 @@ p = [85.5e5 85e5];
 h = [420e3 305e3];
 Tau = 0.1;
 ODEoptions = [];
-nCell = 3;
+nCell = 6;
 gc.initialize(nCell,p,h,Parameters)
 % HP Valve initialization
 HPValve = Valve;
