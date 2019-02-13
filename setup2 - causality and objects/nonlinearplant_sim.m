@@ -7,7 +7,7 @@ givenVolume = 0.0192;
 Parameters.InnerTubeDiameter = 0.007;
 Parameters.nParallelFlows = 5;
 Parameters.OneTubelength = givenVolume/(Parameters.InnerTubeDiameter^2*pi/4);
-Parameters.f1 = 0.0005; % In case of just a few cells, sensitivity is pretty low
+Parameters.f1 = 0.008; % In case of just a few cells, sensitivity is pretty low
 % Gas Cooler, thermal
 Parameters.NominalVolumeFlow = 3.33;
 Parameters.ConductionRatio = 0.2;
@@ -17,11 +17,11 @@ Parameters.Tpo = 273+33;
 Parameters.Tsi = 273+30;
 Parameters.Tso = 273+40;
 gc = HeatExchanger;
-p = [85.5e5 85e5];
-h = [420e3 298e3];
-Tau = 0.1;
+p = [90e5 87e5];
+h = [420e3 320e3];
+Tau = 1;
 ODEoptions = [];
-nCell = 3;
+nCell = 4;
 gc.initialize(nCell,p,h,Parameters)
 % HP Valve initialization
 HPValve = Valve;
@@ -35,7 +35,7 @@ HPValve.hInlet = gc.h(end);
 recVolume = 0.133;
 rec = Receiver;
 pRec = 38e5;
-hRec = 300e3;
+hRec = 280e3;
 DmGas = 0.126;
 rec.initialize(pRec,hRec,recVolume);
 rec.separation(); % For the receiver valve
@@ -62,27 +62,28 @@ cooler.DmInlet = 0.151;
 % Compressor initialization
 comp = Compressor;
 IsentropicEfficiency = 0.65;
-compDensity = CoolProp.PropsSI('D','H',450e3,'P',30e5,'CO2');
+compDensity = CoolProp.PropsSI('D','H',450e3,'P',26.5e5,'CO2');
 Displacement = (9.6+6.5+4.3)/1450/60;
 Initial.Dm = Dm;
 Initial.h = 525e3;
-Tau = 2;
+Tau = 1;
 comp.initialize(IsentropicEfficiency,Displacement,Tau,Initial);
 comp.hInlet = 400e3;
-comp.pInlet = 30e5;
+comp.pInlet = 26.5e5;
 comp.pOutlet = 85e5;
 % Fan initialization
 fan = Fan;
 Initial.DV = 3.33;
 Initial.T = 273.15+30;
 maxVolumeFlow = 6.66;
+Tau = 1;
 fan.initialize(maxVolumeFlow,Tau,Initial);
 % Controller initialization
 PIHPValve = PIController;
 PIrecValve = PIController;
 PIcomp = PIController;
 PIfan = PIController;
-K = 2e-6;
+K = 1e-5;
 Ti = 10;
 mn = 0;
 mx = 1;
@@ -91,21 +92,21 @@ refHP = 85e5;
 refRec = 38e5;
 refMT = 26.5e5;
 refFan = 273.15 + 33;
-timestep = 0.2;
-initInt = 0.25;
+timestep = 0.5;
+initInt = 0.5;
 PIHPValve.initialize(K,Ti,initInt,mn,mx,neg,timestep);
-K = 5e-7;
+K = 5e-5;
 Ti = 5;
 initInt = 0.25;
 PIrecValve.initialize(K,Ti,initInt,mn,mx,neg,timestep);
 mx = 5;
-K = 5e-7;
+K = 5e-6;
 Ti = 10;
-initInt = 0.1;
+initInt = 0.4;
 PIcomp.initialize(K,Ti,initInt,mn,mx,neg,timestep);
-K = 1.2e-1;
+K = 5e-1;
 Ti = 5;
-initInt = 2;
+initInt = 1;
 PIfan.initialize(K,Ti,initInt,mn,mx,neg,timestep);
 
 % Connection object
@@ -141,7 +142,7 @@ for it = 1:itmax
     pp.Inputs.recValveCR = PIrecValve.react(refRec,pp.parts.rec.p);
     pp.Inputs.HPValveCR =  PIHPValve.react(refHP,pp.parts.gc.p(end));
     pp.Inputs.compFreq = PIcomp.react(refMT,pp.parts.cooler.p);
-    pp.Inputs.fanCR = PIfan.react(refFan,pp.parts.gc.T(end));
+    pp.Inputs.fanCR = PIfan.react(refFan+3,pp.parts.gc.T(end));
     % Physical Plant
     pp.timestep(((it-1):it)*timestep);
     % Plotting

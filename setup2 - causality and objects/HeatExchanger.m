@@ -79,7 +79,6 @@ classdef HeatExchanger < matlab.mixin.Copyable
                  try
                      Dd_Dp = CoolProp.PropsSI('d(D)/d(P)|H','H',hx.h(it),'P',hx.p(it),'CO2');
                      Dd_Dh = CoolProp.PropsSI('d(D)/d(H)|P','H',hx.h(it),'P',hx.p(it),'CO2');
-                     %Dd_Dp = 0.25e-4;
                      hx.Dd_Dp = Dd_Dp;
                      hx.Dd_Dh = Dd_Dh;
                      global partials
@@ -89,13 +88,14 @@ classdef HeatExchanger < matlab.mixin.Copyable
                      bugnumber = bugnumber+1;
                 end
                 DpDh_vector(:,it) = [-1 hx.d(it); hx.Dd_Dp hx.Dd_Dh]\...
-                    [Dpsi(it)-hx.p(it)/hx.d(it)*hx.Dd(it); hx.Dd(it)];
+                    [Dpsi(it)-hx.p(it)/hx.d(it)*hx.Dd(it); hx.Dd(it)]; % TODO
             end
             hx.Dp = DpDh_vector(1,:)';
-%             for it = 1:hx.nCell
-%                 hx.Dp(it) = sign(hx.Dp(it))*min(abs(hx.Dp(it)),1e8);
-%             end
             hx.Dh = DpDh_vector(2,:)';
+            for it = 1:hx.nCell
+                hx.Dp(it) = sign(hx.Dp(it))*min(abs(hx.Dp(it)),1e7);
+                hx.Dh(it) = sign(hx.Dh(it))*min(abs(hx.Dh(it)),1e5);
+            end
         end
         function timestep(hx,t,inputs)
             % Function help: simulates the heat exchanger from time t1 to
@@ -157,7 +157,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
             dTi = Parameters.Tpi - Parameters.Tso;
             dTo = Parameters.Tpo - Parameters.Tsi;
             hx.dTlog = (dTo - dTi)/log(dTo/dTi); 
-            CorrectionFactor = 1;
+            CorrectionFactor = 1.5;
             hx.NominalThermalResistance = hx.dTlog/hx.Qnominal/CorrectionFactor;
             hx.NominalVolumeFlow = Parameters.NominalVolumeFlow;
             hx.ConductionSlope = (1 - Parameters.ConductionRatio)/...
@@ -165,7 +165,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
             hx.cp = 1000;
             hx.da = 1.25;
             hx.NaturalConduction =...
-                Parameters.ConductionRatio/(hx.NominalThermalResistance);
+                Parameters.ConductionRatio/hx.NominalThermalResistance;
         end
         function reinitialize(hx,p,h)
             hx.p = linspace(p(1),p(2),hx.nCell)';
