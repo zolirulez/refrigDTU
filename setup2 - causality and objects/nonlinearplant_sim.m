@@ -10,7 +10,6 @@ Parameters.OneTubelength = givenVolume/(Parameters.InnerTubeDiameter^2*pi/4);
 Parameters.f1 = 0.0005; % In case of just a few cells, sensitivity is pretty low
 % Gas Cooler, thermal
 Parameters.NominalVolumeFlow = 3.33;
-Parameters.ConductionSlope = 900;
 Parameters.ConductionRatio = 0.2;
 Parameters.Qnominal = 74300;
 Parameters.Tpi = 273+107;
@@ -19,17 +18,17 @@ Parameters.Tsi = 273+30;
 Parameters.Tso = 273+40;
 gc = HeatExchanger;
 p = [85.5e5 85e5];
-h = [420e3 305e3];
+h = [420e3 298e3];
 Tau = 0.1;
 ODEoptions = [];
-nCell = 6;
+nCell = 3;
 gc.initialize(nCell,p,h,Parameters)
 % HP Valve initialization
 HPValve = Valve;
 Kv = 0.8;
 Dm = 0.321;
 Initial.Dm = Dm;
-Initial.h = 300e3;
+Initial.h = 298e3;
 HPValve.initialize(Kv,Tau,Initial);
 HPValve.hInlet = gc.h(end);
 % Receiver initialization
@@ -54,7 +53,7 @@ RecJoint = Joint;
 % Cooler initialization
 cooler = Evaporator;
 coolerVolume = givenVolume*5;
-pCooler = 30e5;
+pCooler = 26.5e5;
 hOutletVirtual = 440e3;
 hCooler = hOutletVirtual;
 cooler.initialize(pCooler,hCooler,hOutletVirtual,coolerVolume);
@@ -67,7 +66,7 @@ compDensity = CoolProp.PropsSI('D','H',450e3,'P',30e5,'CO2');
 Displacement = (9.6+6.5+4.3)/1450/60;
 Initial.Dm = Dm;
 Initial.h = 525e3;
-Tau = 1;
+Tau = 2;
 comp.initialize(IsentropicEfficiency,Displacement,Tau,Initial);
 comp.hInlet = 400e3;
 comp.pInlet = 30e5;
@@ -90,7 +89,7 @@ mx = 1;
 neg = -1;
 refHP = 85e5;
 refRec = 38e5;
-refMT = 30e5;
+refMT = 26.5e5;
 refFan = 273.15 + 33;
 timestep = 0.2;
 initInt = 0.25;

@@ -92,6 +92,9 @@ classdef HeatExchanger < matlab.mixin.Copyable
                     [Dpsi(it)-hx.p(it)/hx.d(it)*hx.Dd(it); hx.Dd(it)];
             end
             hx.Dp = DpDh_vector(1,:)';
+%             for it = 1:hx.nCell
+%                 hx.Dp(it) = sign(hx.Dp(it))*min(abs(hx.Dp(it)),1e8);
+%             end
             hx.Dh = DpDh_vector(2,:)';
         end
         function timestep(hx,t,inputs)
@@ -154,13 +157,15 @@ classdef HeatExchanger < matlab.mixin.Copyable
             dTi = Parameters.Tpi - Parameters.Tso;
             dTo = Parameters.Tpo - Parameters.Tsi;
             hx.dTlog = (dTo - dTi)/log(dTo/dTi); 
-            hx.NominalThermalResistance = hx.dTlog/hx.Qnominal;
+            CorrectionFactor = 1;
+            hx.NominalThermalResistance = hx.dTlog/hx.Qnominal/CorrectionFactor;
             hx.NominalVolumeFlow = Parameters.NominalVolumeFlow;
             hx.ConductionSlope = (1 - Parameters.ConductionRatio)/...
                 hx.NominalThermalResistance/hx.NominalVolumeFlow;
             hx.cp = 1000;
             hx.da = 1.25;
-            hx.NaturalConduction = 1/(5*hx.NominalThermalResistance);
+            hx.NaturalConduction =...
+                Parameters.ConductionRatio/(hx.NominalThermalResistance);
         end
         function reinitialize(hx,p,h)
             hx.p = linspace(p(1),p(2),hx.nCell)';
