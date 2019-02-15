@@ -52,7 +52,13 @@ classdef HeatExchanger < matlab.mixin.Copyable
             deltap = hx.p(1:end-1)-hx.p(2:end);
             inducedDm = sign(deltap).*...
                 sqrt(abs(deltap.*hx.d(1:end-1)))/hx.OneCellResistance;
-            hx.Dm  = [hx.DmInlet; inducedDm; hx.DmOutlet];
+%             inducedDm = -diff(hx.h-hx.p./hx.d)./hx.OneCellResistance;
+
+            Dm1  = [hx.DmInlet; inducedDm; hx.DmOutlet];
+            Dm2  = linspace(hx.DmInlet,hx.DmOutlet,hx.nCell+1)';
+            hx.Dm = (Dm1*0.5 + Dm2*0.5);
+            hx.Dm(1) = hx.DmInlet;
+            hx.Dm(end) = hx.DmOutlet;
         end
         function massAccummulation(hx)
             hx.Dd = -diff(hx.Dm)/hx.OneTubeCellVolume;
@@ -86,16 +92,17 @@ classdef HeatExchanger < matlab.mixin.Copyable
                  catch
                      global bugnumber
                      bugnumber = bugnumber+1;
-                end
+                 end
+                Dd = hx.Dd; %sign(hx.Dd).*sqrt(abs(hx.Dd));
                 DpDh_vector(:,it) = [-1 hx.d(it); hx.Dd_Dp hx.Dd_Dh]\...
-                    [Dpsi(it)-hx.p(it)/hx.d(it)*hx.Dd(it); hx.Dd(it)]; % TODO
+                    [Dpsi(it)-hx.p(it)/hx.d(it)*Dd(it); Dd(it)]; % TODO
             end
             hx.Dp = DpDh_vector(1,:)';
             hx.Dh = DpDh_vector(2,:)';
-            for it = 1:hx.nCell
-                hx.Dp(it) = sign(hx.Dp(it))*min(abs(hx.Dp(it)),1e7);
-                hx.Dh(it) = sign(hx.Dh(it))*min(abs(hx.Dh(it)),1e5);
-            end
+%             for it = 1:hx.nCell
+%                 hx.Dp(it) = sign(hx.Dp(it))*min(abs(hx.Dp(it)),1e7);
+%                 hx.Dh(it) = sign(hx.Dh(it))*min(abs(hx.Dh(it)),1e5);
+%             end
         end
         function timestep(hx,t,inputs)
             % Function help: simulates the heat exchanger from time t1 to
@@ -157,7 +164,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
             dTi = Parameters.Tpi - Parameters.Tso;
             dTo = Parameters.Tpo - Parameters.Tsi;
             hx.dTlog = (dTo - dTi)/log(dTo/dTi); 
-            CorrectionFactor = 1.5;
+            CorrectionFactor = 2;
             hx.NominalThermalResistance = hx.dTlog/hx.Qnominal/CorrectionFactor;
             hx.NominalVolumeFlow = Parameters.NominalVolumeFlow;
             hx.ConductionSlope = (1 - Parameters.ConductionRatio)/...

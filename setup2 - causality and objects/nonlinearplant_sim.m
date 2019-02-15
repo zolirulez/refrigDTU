@@ -7,7 +7,7 @@ givenVolume = 0.0192;
 Parameters.InnerTubeDiameter = 0.007;
 Parameters.nParallelFlows = 5;
 Parameters.OneTubelength = givenVolume/(Parameters.InnerTubeDiameter^2*pi/4);
-Parameters.f1 = 0.008; % In case of just a few cells, sensitivity is pretty low
+Parameters.f1 = 0.005; % In case of just a few cells, sensitivity is pretty low
 % Gas Cooler, thermal
 Parameters.NominalVolumeFlow = 3.33;
 Parameters.ConductionRatio = 0.2;
@@ -18,7 +18,7 @@ Parameters.Tsi = 273+30;
 Parameters.Tso = 273+40;
 gc = HeatExchanger;
 p = [90e5 87e5];
-h = [420e3 320e3];
+h = [450e3 320e3];
 Tau = 1;
 ODEoptions = [];
 nCell = 4;
@@ -83,8 +83,8 @@ PIHPValve = PIController;
 PIrecValve = PIController;
 PIcomp = PIController;
 PIfan = PIController;
-K = 1e-5;
-Ti = 10;
+K = 4e-6;
+Ti = 5;
 mn = 0;
 mx = 1;
 neg = -1;
@@ -93,18 +93,18 @@ refRec = 38e5;
 refMT = 26.5e5;
 refFan = 273.15 + 33;
 timestep = 0.5;
-initInt = 0.5;
+initInt = 0.25;
 PIHPValve.initialize(K,Ti,initInt,mn,mx,neg,timestep);
-K = 5e-5;
+K = 2e-6;
 Ti = 5;
 initInt = 0.25;
 PIrecValve.initialize(K,Ti,initInt,mn,mx,neg,timestep);
 mx = 5;
-K = 5e-6;
+K = 2e-6;
 Ti = 10;
-initInt = 0.4;
+initInt = 0.25;
 PIcomp.initialize(K,Ti,initInt,mn,mx,neg,timestep);
-K = 5e-1;
+K = 1e-1;
 Ti = 5;
 initInt = 1;
 PIfan.initialize(K,Ti,initInt,mn,mx,neg,timestep);
@@ -142,7 +142,7 @@ for it = 1:itmax
     pp.Inputs.recValveCR = PIrecValve.react(refRec,pp.parts.rec.p);
     pp.Inputs.HPValveCR =  PIHPValve.react(refHP,pp.parts.gc.p(end));
     pp.Inputs.compFreq = PIcomp.react(refMT,pp.parts.cooler.p);
-    pp.Inputs.fanCR = PIfan.react(refFan+3,pp.parts.gc.T(end));
+    pp.Inputs.fanCR = PIfan.react(refFan+2,pp.parts.gc.T(end));
     % Physical Plant
     pp.timestep(((it-1):it)*timestep);
     % Plotting
@@ -219,6 +219,7 @@ function Dx = process(t,x,pp)
     rec.separation;
     % Connections: joints
     LTDm = 11000/(450e3-rec.liquid.h); % Boundary condition
+    recValve.enthalpy;
     MTJoint.noAccummulation(cooler.p,...
         [recValve.Dm; LTDm],[recValve.h; 530e3],-comp.Dm,cooler.h);
     comp.enthalpy;
@@ -230,7 +231,6 @@ function Dx = process(t,x,pp)
     connect.outlet(recValve,MTJoint,{'p'});
     connect.inlet(recValve,rec.gas,{'p','h','d'});
     connect.outlet(rec,recValve,{'Dm'},'gas');
-    connect.inlet(rec,HPValve,{'Dm','h'});
     connect.outlet(rec,RecJoint,{'Dm'},'liquid');
     connect.outlet(HPValve,rec,{'p'});
     connect.inlet(HPValve,gc,{'p','h','d'});
@@ -240,8 +240,9 @@ function Dx = process(t,x,pp)
     connect.outlet(cooler,MTJoint,{'Dm'});
     connect.inlet(cooler,RecJoint,{'h'});
     % Static equations: inner propagations of connected inlets
-    recValve.enthalpy;
     HPValve.enthalpy;
+    % Connections: paired components
+    connect.inlet(rec,HPValve,{'Dm','h'});    
     % Cooler
     DCooler = cooler.process(t,xCooler,coolerDQ);
     % Compressor
@@ -306,6 +307,7 @@ function postProcess(X,pp)
     rec.separation;
     % Connections: joints
     LTDm = 11000/(450e3-rec.liquid.h); % Boundary condition
+    recValve.enthalpy;
     MTJoint.noAccummulation(cooler.p,...
         [recValve.Dm; LTDm],[recValve.h; 530e3],-comp.Dm,cooler.h);
     comp.enthalpy;
@@ -317,7 +319,6 @@ function postProcess(X,pp)
     connect.outlet(recValve,MTJoint,{'p'});
     connect.inlet(recValve,rec.gas,{'p','h','d'});
     connect.outlet(rec,recValve,{'Dm'},'gas');
-    connect.inlet(rec,HPValve,{'Dm','h'});
     connect.outlet(rec,RecJoint,{'Dm'},'liquid');
     connect.outlet(HPValve,rec,{'p'});
     connect.inlet(HPValve,gc,{'p','h','d'});
@@ -327,6 +328,7 @@ function postProcess(X,pp)
     connect.outlet(cooler,MTJoint,{'Dm'});
     connect.inlet(cooler,RecJoint,{'h'});
     % Static equations: inner propagations of connected inlets
-    recValve.enthalpy;
     HPValve.enthalpy;
+    % Connections: paired components
+    connect.inlet(rec,HPValve,{'Dm','h'});   
 end
