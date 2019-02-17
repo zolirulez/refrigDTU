@@ -9,16 +9,20 @@ classdef HeatExchanger < matlab.mixin.Copyable
         f1                      % Friction factor
         OneTubeTotalResistance  % Total resistance of one tube
         OneCellResistance       % Resistance of one piece of n parallel tubes
+        TauDm                   % Time constant of induced mass flow rate
+        TauTa
         % Discretization parameter
         nCell
         % Variables
         Dm                      % Mass flow rate
+        iDm                     % Induced mass flow rate
         p                       % Pressure
         h                       % Enthalpy
         d                       % Density
         Dp                      % Pressure derivative
         Dh                      % Enthalpy derivative
         Dd                      % Density derivative
+        iDDm                    % Induced mass flow rate derivative
         record                  % Record of results
         ODEoptions              % Options of ODE solver
         t                       % Last time instant
@@ -32,6 +36,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
         % Heat Exchange
         T
         Ta
+        DTa
         NominalThermalResistance
         NominalVolumeFlow
         ConductionSlope
@@ -50,15 +55,10 @@ classdef HeatExchanger < matlab.mixin.Copyable
     methods
         function massflow(hx)
             deltap = hx.p(1:end-1)-hx.p(2:end);
-            inducedDm = sign(deltap).*...
-                sqrt(abs(deltap.*hx.d(1:end-1)))/hx.OneCellResistance;
+            hx.iDDm = 1/hx.TauDm*(-hx.iDm+sign(deltap).*...
+                sqrt(abs(deltap.*hx.d(1:end-1)))/hx.OneCellResistance);
 %             inducedDm = -diff(hx.h-hx.p./hx.d)./hx.OneCellResistance;
-
-            Dm1  = [hx.DmInlet; inducedDm; hx.DmOutlet];
-            Dm2  = linspace(hx.DmInlet,hx.DmOutlet,hx.nCell+1)';
-            hx.Dm = (Dm1*0.5 + Dm2*0.5);
-            hx.Dm(1) = hx.DmInlet;
-            hx.Dm(end) = hx.DmOutlet;
+            hx.Dm  = [hx.DmInlet; hx.iDm; hx.DmOutlet];
         end
         function massAccummulation(hx)
             hx.Dd = -diff(hx.Dm)/hx.OneTubeCellVolume;
@@ -72,12 +72,13 @@ classdef HeatExchanger < matlab.mixin.Copyable
                     bugnumber = bugnumber+1;
                 end
              end
+             CorrectionFactor = 10;
              hx.oneCellThermalResistance =...
-                 1/(hx.OneCellNaturalConduction+hx.OneCellConductionSlope*hx.DVInlet)...
-                 + 1/(hx.da*hx.DVInlet*hx.cp);
+                 (1/(hx.OneCellNaturalConduction+hx.OneCellConductionSlope*hx.DVInlet)...
+                 + 1/(hx.da*hx.DVInlet*hx.cp))/CorrectionFactor;
              weightFactor = hx.oneCellThermalResistance*hx.da*hx.DVInlet*hx.cp;
-             hx.Ta = 1/(weightFactor + 1)*flip(hx.T) +...
-                 1/(1/weightFactor + 1)*[hx.TInlet; hx.Ta(1:end-1)];
+             hx.DTa = hx.TauTa*(-hx.Ta+1/(weightFactor + 1)*flip(hx.T) +...
+                 1/(1/weightFactor + 1)*[hx.TInlet; hx.Ta(1:end-1)]);
              hx.DQ = (flip(hx.Ta) - hx.T)/hx.oneCellThermalResistance;
              Dpsi = (-diff(hx.Dm .*[hx.hInlet; hx.h(1:end)]) + hx.DQ)/hx.OneTubeCellVolume;
              DpDh_vector = zeros(2,hx.nCell);
@@ -93,9 +94,8 @@ classdef HeatExchanger < matlab.mixin.Copyable
                      global bugnumber
                      bugnumber = bugnumber+1;
                  end
-                Dd = hx.Dd; %sign(hx.Dd).*sqrt(abs(hx.Dd));
-                DpDh_vector(:,it) = [-1 hx.d(it); hx.Dd_Dp hx.Dd_Dh]\...
-                    [Dpsi(it)-hx.p(it)/hx.d(it)*Dd(it); Dd(it)]; % TODO
+                DpDh_vector(:,it) = [-1/hx.d(it)/1e3 1/1e3; hx.Dd_Dp hx.Dd_Dh]\...
+                    [(Dpsi(it)-hx.p(it)/hx.d(it)*hx.Dd(it))/hx.d(it)/1e3; hx.Dd(it)]; % TODO
             end
             hx.Dp = DpDh_vector(1,:)';
             hx.Dh = DpDh_vector(2,:)';
@@ -124,13 +124,15 @@ classdef HeatExchanger < matlab.mixin.Copyable
             hx.p = x(1:hx.nCell,1);
             hx.h = x(hx.nCell+1:2*hx.nCell,1);
             hx.d = x(2*hx.nCell+1:3*hx.nCell,1);
+            hx.Ta = x(3*hx.nCell+1:4*hx.nCell,1);
+            hx.iDm = x(4*hx.nCell+1:5*hx.nCell-1,1);
             % Process
             massflow(hx);
             massAccummulation(hx);
             potentialAccummulation(hx);
-            Dx = [hx.Dp; hx.Dh; hx.Dd];
+            Dx = [hx.Dp; hx.Dh; hx.Dd; hx.DTa; hx.iDDm];
         end
-        function initialize(hx,nCell,p,h,Parameters)
+        function initialize(hx,nCell,p,h,iDm,Ta,Parameters)
             % Function help: provide two-element vectors for pressure and 
             %   enthalpy inlets and outlets, and provide volume.
 
@@ -144,7 +146,11 @@ classdef HeatExchanger < matlab.mixin.Copyable
                 hx.InnerTubeDiameter^2*pi/4*hx.OneTubeLength;
             hx.OneTubeTotalResistance = sqrt(16*hx.f1*hx.OneTubeLength/...
                 (pi^2*hx.InnerTubeDiameter^5));
+            hx.TauDm = Parameters.TauDm;
+            hx.TauTa = Parameters.TauTa;
             % States
+            hx.iDm = iDm*ones(hx.nCell-1,1);
+            hx.Ta = linspace(Ta(1),Ta(2),nCell)';
             hx.p = linspace(p(1),p(2),nCell)';
             hx.h = linspace(h(1),h(2),nCell)';
             hx.ph2d;
@@ -164,19 +170,20 @@ classdef HeatExchanger < matlab.mixin.Copyable
             dTi = Parameters.Tpi - Parameters.Tso;
             dTo = Parameters.Tpo - Parameters.Tsi;
             hx.dTlog = (dTo - dTi)/log(dTo/dTi); 
-            CorrectionFactor = 2;
-            hx.NominalThermalResistance = hx.dTlog/hx.Qnominal/CorrectionFactor;
+            hx.NominalThermalResistance = hx.dTlog/hx.Qnominal;
             hx.NominalVolumeFlow = Parameters.NominalVolumeFlow;
             hx.ConductionSlope = (1 - Parameters.ConductionRatio)/...
                 hx.NominalThermalResistance/hx.NominalVolumeFlow;
             hx.cp = 1000;
-            hx.da = 1.25;
+            hx.da = 1.2;
             hx.NaturalConduction =...
                 Parameters.ConductionRatio/hx.NominalThermalResistance;
         end
-        function reinitialize(hx,p,h)
+        function reinitialize(hx,p,h,iDm,Ta)
+            hx.iDm = iDm*ones(hx.nCell-1,1);
             hx.p = linspace(p(1),p(2),hx.nCell)';
             hx.h = linspace(h(1),h(2),hx.nCell)';
+            hx.Ta = linspace(Ta(1),Ta(2),hx.nCell)';
             hx.ph2d;
             hx.ph2T;
             hx.record.t = [];

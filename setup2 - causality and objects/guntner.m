@@ -7,22 +7,26 @@ givenVolume = 0.0192;
 Parameters.InnerTubeDiameter = 0.007;
 Parameters.nParallelFlows = 5;
 Parameters.OneTubelength = givenVolume/(Parameters.InnerTubeDiameter^2*pi/4);
-Parameters.f1 = 0.001; % In case of just a few cells, sensitivity is pretty low
+Parameters.f1 = 0.0001; % In case of just a few cells, sensitivity is pretty low
+Parameters.TauDm = 1;
 % Gas Cooler, thermal
 Parameters.NominalVolumeFlow = 3.33;
-Parameters.ConductionRatio = 0.2;
+Parameters.ConductionRatio = 0.05;
 Parameters.Qnominal = 74300;
 Parameters.Tpi = 273+107;
 Parameters.Tpo = 273+33;
 Parameters.Tsi = 273+30;
 Parameters.Tso = 273+40;
+Parameters.TauTa = 5;
 gc = HeatExchanger;
-p = [90e5 87e5];
-h = [450e3 320e3];
+p = [88e5 85e5];
+h = [450e3 305e3];
+Ta = [32 50]+273;
+iDm = 0.321;
 Tau = 1;
 ODEoptions = [];
-nCell = 4;
-gc.initialize(nCell,p,h,Parameters)
+nCell = 5;
+gc.initialize(nCell,p,h,iDm,Ta,Parameters)
 % HP Valve initialization
 HPValve = Valve;
 Kv = 0.8;
@@ -33,7 +37,7 @@ HPValve.initialize(Kv,Tau,Initial);
 HPValve.hInlet = gc.h(end);
 % Fan initialization
 fan = Fan;
-Initial.DV = 6.66;
+Initial.DV = 3.33;
 Initial.T = 273.15+30;
 maxVolumeFlow = 6.66;
 Tau = 1;
@@ -43,22 +47,20 @@ PIHPValve = PIController;
 PIrecValve = PIController;
 PIcomp = PIController;
 PIfan = PIController;
-K = 1e-5;
-Ti = 10;
+K = 5e-7;
+Ti = 5;
 mn = 0;
 mx = 1;
 neg = -1;
 refHP = 85e5;
-refRec = 38e5;
-refMT = 26.5e5;
 refFan = 273.15 + 33;
-timestep = 0.5;
-initInt = 0.5;
+timestep = 2;
+initInt = 0.92;
 PIHPValve.initialize(K,Ti,initInt,mn,mx,neg,timestep);
-mx = 5;
-K = 5e-1;
-Ti = 10;
-initInt = 2;
+mx = 1;
+K = 5e-2;
+Ti = 5;
+initInt = 0.52;
 PIfan.initialize(K,Ti,initInt,mn,mx,neg,timestep);
 
 % Connection object
@@ -75,7 +77,7 @@ Process = @process;
 PreProcess = @preProcess; 
 PostProcess = @postProcess; 
 ODEoptions = [];
-Initial = [gc.p; gc.h; gc.d; HPValve.Dm; fan.DV];
+Initial = [gc.p; gc.h; gc.d; gc.Ta; gc.iDm; HPValve.Dm; fan.DV];
 pp.initialize(Parts,Process,PostProcess,Initial,ODEoptions);
 Inputs = [];
 pp.initialInputs(Inputs);
@@ -86,11 +88,11 @@ tic
 for it = 1:itmax
     % Controller
     pp.Inputs.HPValveCR =  PIHPValve.react(refHP,pp.parts.gc.p(end));
-    pp.Inputs.fanCR = PIfan.react(refFan+2,pp.parts.gc.T(end));
+    pp.Inputs.fanCR = PIfan.react(refFan+1,pp.parts.gc.T(end));
     % Physical Plant
     pp.timestep(((it-1):it)*timestep);
     % Plotting
-    if ~rem(it,10)
+    if ~rem(it,1)
         pause(0.1)
         subplot(321)
         plot(pp.t,pp.parts.gc.record.x(:,1:nCell))
@@ -103,7 +105,7 @@ for it = 1:itmax
         subplot(325)
         plot(pp.t,pp.parts.fan.record.x);
         subplot(326)
-        plot(pp.t,(gc.hInlet-gc.record.x(:,2*nCell))*(HPValve.Dm+gc.DmInlet)/2);
+        plot(pp.t,(gc.hInlet-gc.record.x(:,2*nCell)).*(HPValve.record.x+gc.DmInlet)/2);
     end
 end
 toc
@@ -122,17 +124,19 @@ function Dx = process(t,x,pp)
     HPValveCR = pp.Inputs.HPValveCR;
     fanCR = pp.Inputs.fanCR;
     % States
-    xGC = x(1:gc.nCell*3);
-    xHPValve = x(gc.nCell*3+1);
-    xFan = x(gc.nCell*3+2);
+    xGC = x(1:gc.nCell*5-1);
+    xHPValve = x(gc.nCell*5-1+1);
+    xFan = x(gc.nCell*5-1+2);
     gc.p = xGC(1:gc.nCell);
     gc.h = xGC(gc.nCell+1:2*gc.nCell);
     gc.d = xGC(2*gc.nCell+1:3*gc.nCell);
+    gc.Ta = xGC(3*gc.nCell+1:4*gc.nCell);
+    gc.iDm = xGC(4*gc.nCell+1:5*gc.nCell-1);
     HPValve.Dm = xHPValve;
     fan.DV = xFan;
     % Boundary Conditions
     gc.DmInlet = 0.321;
-    gc.hInlet = 525e3;
+    gc.hInlet = 520e3;
     HPValve.pOutlet = 38e5;
     % Connections: paired components
     connect.inlet(HPValve,gc,{'p','h','d'});
@@ -155,9 +159,9 @@ function postProcess(X,pp)
     connect = pp.parts.connect;
     fan = pp.parts.fan;
     % States
-    XGC = X(:,1:gc.nCell*3);
-    XHPValve = X(:,gc.nCell*3+1);
-    XFan = X(:,gc.nCell*3+2);
+    XGC = X(:,1:gc.nCell*5-1);
+    XHPValve = X(:,gc.nCell*5-1+1);
+    XFan = X(:,gc.nCell*5-1+2);
     % Recording
     gc.record.x = [gc.record.x; XGC];
     HPValve.record.x = [HPValve.record.x; XHPValve];
@@ -166,6 +170,8 @@ function postProcess(X,pp)
     gc.p = XGC(end,1:gc.nCell)';
     gc.h = XGC(end,gc.nCell+1:2*gc.nCell)';
     gc.d = XGC(end,2*gc.nCell+1:3*gc.nCell)';
+    gc.d = XGC(end,3*gc.nCell+1:4*gc.nCell)';
+    gc.iDm = XGC(end,4*gc.nCell+1:5*gc.nCell-1)';
     HPValve.Dm = XHPValve(end,1);
     fan.DV = XFan(end,1);
     % Connections: paired components
