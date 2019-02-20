@@ -11,7 +11,7 @@ Parameters.f1 = 0.0001; % In case of just a few cells, sensitivity is pretty low
 Parameters.TauDm = 1;
 % Gas Cooler, thermal
 Parameters.NominalVolumeFlow = 3.33;
-Parameters.ConductionRatio = 0.05;
+Parameters.ConductionRatio = 0.2;
 Parameters.Qnominal = 74300;
 Parameters.Tpi = 273+107;
 Parameters.Tpo = 273+33;
@@ -25,7 +25,7 @@ Ta = [32 50]+273;
 iDm = 0.321;
 Tau = 1;
 ODEoptions = [];
-nCell = 5;
+nCell = 10;
 gc.initialize(nCell,p,h,iDm,Ta,Parameters)
 % HP Valve initialization
 HPValve = Valve;
@@ -136,7 +136,7 @@ function Dx = process(t,x,pp)
     fan.DV = xFan;
     % Boundary Conditions
     gc.DmInlet = 0.321;
-    gc.hInlet = 520e3;
+    gc.hInlet = 530e3;
     HPValve.pOutlet = 38e5;
     % Connections: paired components
     connect.inlet(HPValve,gc,{'p','h','d'});

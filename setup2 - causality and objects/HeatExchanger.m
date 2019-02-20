@@ -72,7 +72,7 @@ classdef HeatExchanger < matlab.mixin.Copyable
                     bugnumber = bugnumber+1;
                 end
              end
-             CorrectionFactor = 10;
+             CorrectionFactor = 1;
              hx.oneCellThermalResistance =...
                  (1/(hx.OneCellNaturalConduction+hx.OneCellConductionSlope*hx.DVInlet)...
                  + 1/(hx.da*hx.DVInlet*hx.cp))/CorrectionFactor;
@@ -169,13 +169,15 @@ classdef HeatExchanger < matlab.mixin.Copyable
             hx.Qnominal = Parameters.Qnominal;
             dTi = Parameters.Tpi - Parameters.Tso;
             dTo = Parameters.Tpo - Parameters.Tsi;
-            hx.dTlog = (dTo - dTi)/log(dTo/dTi); 
-            hx.NominalThermalResistance = hx.dTlog/hx.Qnominal;
-            hx.NominalVolumeFlow = Parameters.NominalVolumeFlow;
-            hx.ConductionSlope = (1 - Parameters.ConductionRatio)/...
-                hx.NominalThermalResistance/hx.NominalVolumeFlow;
+            hx.dTlog = (dTo - dTi)/log(dTo/dTi);
             hx.cp = 1000;
             hx.da = 1.2;
+            hx.NominalVolumeFlow = Parameters.NominalVolumeFlow;
+            hx.NominalThermalResistance = dTo/hx.Qnominal;%...
+                %(hx.dTlog/hx.Qnominal*2/3 + dTo*1/3)/hx.Qnominal -...
+                %1/(hx.da*hx.cp*hx.NominalVolumeFlow);
+            hx.ConductionSlope = (1 - Parameters.ConductionRatio)/...
+                hx.NominalThermalResistance/hx.NominalVolumeFlow;
             hx.NaturalConduction =...
                 Parameters.ConductionRatio/hx.NominalThermalResistance;
         end
