@@ -1,0 +1,15 @@
+% deltaT = 3;
+DQ = 74300;
+d = 1.25;
+DV = 3.33;
+cp = 1000;
+n = 10;
+% sigma = DQ/deltaT/n;
+% sigmaconv = 1/(1/sigma - 1/(d*DV*cp))
+TAin = 273.15 + 30;
+TAout = TAin + DQ/(d*DV*cp)
+TCin = 273.15 + 107;
+TCout = 273.15 + 33;
+BA = log(TAout/TAin)/n;
+BC = log(TCin/TCout)/n;
+conv = ((TAout-TAin)/BA+(TCin-TCout)/BC)/DQ
