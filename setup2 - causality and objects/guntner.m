@@ -57,7 +57,7 @@ refFan = 273.15 + 33;
 timestep = 2;
 initInt = 0.92;
 PIHPValve.initialize(K,Ti,initInt,mn,mx,neg,timestep);
-mx = 1;
+mx = 5;
 K = 5e-2;
 Ti = 5;
 initInt = 0.52;
@@ -88,7 +88,7 @@ tic
 for it = 1:itmax
     % Controller
     pp.Inputs.HPValveCR =  PIHPValve.react(refHP,pp.parts.gc.p(end));
-    pp.Inputs.fanCR = PIfan.react(refFan+1,pp.parts.gc.T(end));
+    pp.Inputs.fanCR = PIfan.react(refFan,pp.parts.gc.T(end));
     % Physical Plant
     pp.timestep(((it-1):it)*timestep);
     % Plotting
