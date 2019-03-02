@@ -21,7 +21,13 @@ air = [...
   308.0502...
   306.1440];
 figure(2)
-plot(air-273.15)
+plot(flip(air)-273.15)
 hold on
-plot(flip(co2)-273.15)
+plot(co2-273.15)
 hold off
+ylabel('T [C°]')
+xlabel('i [-]')
+legend('Air','CO2')
+xlim([1 10])
+
+saveas(gcf,'tempdist.png')
